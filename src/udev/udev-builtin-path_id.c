@@ -426,6 +426,46 @@ static struct udev_device *handle_scsi_hyperv(struct udev_device *parent, char *
         return parent;
 }
 
+static struct udev_device *handle_ata(struct udev_device *parent, char **path)
+{
+        struct udev *udev  = udev_device_get_udev(parent);
+        struct udev_device *hostdev, *portdev;
+        int host, bus, target, lun, port_no;
+        const char *name, *atahost, *port;
+
+        hostdev = udev_device_get_parent_with_subsystem_devtype(parent, "scsi", "scsi_host");
+        if (hostdev == NULL)
+                return NULL;
+
+        name = udev_device_get_sysname(parent);
+        if (sscanf(name, "%d:%d:%d:%d", &host, &bus, &target, &lun) != 4)
+                return NULL;
+
+        /* The ata port is the parent of the SCSI host */
+        hostdev = udev_device_get_parent(hostdev);
+        atahost = udev_device_get_sysname(hostdev);
+        if (strncmp(atahost, "ata", 3))
+                return NULL;
+
+        /* ATA port number is found in 'port_no' attribute */
+        portdev = udev_device_new_from_subsystem_sysname(udev, "ata_port",
+                                                         atahost);
+        port = udev_device_get_sysattr_value(portdev, "port_no");
+        if (!port || sscanf(port, "%d", &port_no) != 1) {
+                hostdev = NULL;
+                goto out;
+        }
+        if (bus != 0)
+                /* Devices behind port multiplier have a bus != 0*/
+                path_prepend(path, "ata-%u.%u.0", port_no, bus);
+        else
+                /* Master/slave are distinguished by target id */
+                path_prepend(path, "ata-%u.%u", port_no, target);
+out:
+        udev_device_unref(portdev);
+        return hostdev;
+}
+
 static struct udev_device *handle_scsi(struct udev_device *parent, char **path, bool *supported_parent) {
         const char *devtype;
         const char *name;
@@ -465,19 +505,8 @@ static struct udev_device *handle_scsi(struct udev_device *parent, char **path, 
                 goto out;
         }
 
-        /*
-         * We do not support the ATA transport class, it uses global counters
-         * to name the ata devices which numbers spread across multiple
-         * controllers.
-         *
-         * The real link numbers are not exported. Also, possible chains of ports
-         * behind port multipliers cannot be composed that way.
-         *
-         * Until all that is solved at the kernel level, there are no by-path/
-         * links for ATA devices.
-         */
         if (strstr(name, "/ata") != NULL) {
-                parent = NULL;
+                parent = handle_ata(parent, path);
                 goto out;
         }
 
