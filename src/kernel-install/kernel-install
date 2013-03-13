@@ -19,6 +19,27 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with systemd; If not, see <http://www.gnu.org/licenses/>.
 
+if [[ -x /sbin/new-kernel-pkg ]]; then
+    [[ "$2" == *\+* ]] && flavor=-"${2##*+}"
+    case "$1" in
+        add)
+            /sbin/new-kernel-pkg --package "kernel${flavor}" --install "$2" || exit $?
+            /sbin/new-kernel-pkg --package "kernel${flavor}" --mkinitrd --dracut --depmod --update "$2" || exit $?
+            /sbin/new-kernel-pkg --package "kernel${flavor}" --rpmposttrans "$2" || exit $?
+            ;;
+        remove)
+            /sbin/new-kernel-pkg --package "kernel${flavor+-$flavor}" --rminitrd --rmmoddep --remove "$2" || exit $?
+            ;;
+        *)
+            ;;
+    esac
+
+    # exit, if we can't find a boot loader spec conforming setup
+    if ! [[ -d /boot/loader/entries || -L /boot/loader/entries ]]; then
+        exit 0
+    fi
+fi
+
 usage()
 {
     echo "Usage:"
