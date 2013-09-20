@@ -1099,6 +1099,9 @@ void job_shutdown_magic(Job *j) {
         if (!unit_has_name(j->unit, SPECIAL_SHUTDOWN_TARGET))
                 return;
 
+        /* In case messages on console has been disabled on boot */
+        j->unit->manager->no_console_output = false;
+
         if (detect_container(NULL) > 0)
                 return;
 
