@@ -40,8 +40,8 @@
 #include <selinux/label.h>
 #include <selinux/context.h>
 
-define_trivial_cleanup_func(security_context_t, freecon);
-define_trivial_cleanup_func(context_t, context_free);
+DEFINE_TRIVIAL_CLEANUP_FUNC(security_context_t, freecon);
+DEFINE_TRIVIAL_CLEANUP_FUNC(context_t, context_free);
 
 #define _cleanup_security_context_free_ _cleanup_(freeconp)
 #define _cleanup_context_free_ _cleanup_(context_freep)
