@@ -4415,7 +4415,6 @@ SYSINIT_TARGET_WANTS += \
 	systemd-update-utmp.service
 LOCAL_FS_TARGET_WANTS += \
 	systemd-remount-fs.service \
-	systemd-fsck-root.service \
 	tmp.mount
 MULTI_USER_TARGET_WANTS += \
 	getty.target \
