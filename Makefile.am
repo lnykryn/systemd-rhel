@@ -437,7 +437,6 @@ nodist_systemunit_DATA = \
 	units/systemd-sysctl.service \
 	units/emergency.service \
 	units/rescue.service \
-	units/user@.service \
 	units/systemd-hibernate.service \
 	units/systemd-hybrid-sleep.service \
 	units/systemd-suspend.service \
@@ -486,7 +485,6 @@ EXTRA_DIST += \
 	units/user/systemd-exit.service.in \
 	units/systemd-fsck@.service.in \
 	units/systemd-fsck-root.service.in \
-	units/user@.service.in \
 	units/systemd-udevd.service \
 	units/systemd-udev-trigger.service \
 	units/systemd-udev-settle.service \

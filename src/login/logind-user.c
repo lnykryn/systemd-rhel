@@ -365,43 +365,6 @@ static int user_start_slice(User *u) {
         return 0;
 }
 
-static int user_start_service(User *u) {
-        DBusError error;
-        char *job;
-        int r;
-
-        assert(u);
-
-        dbus_error_init(&error);
-
-        if (!u->service) {
-                char lu[DECIMAL_STR_MAX(unsigned long) + 1], *service;
-                sprintf(lu, "%lu", (unsigned long) u->uid);
-
-                service = unit_name_build("user", lu, ".service");
-                if (!service)
-                        return log_oom();
-
-                r = manager_start_unit(u->manager, service, &error, &job);
-                if (r < 0) {
-                        log_error("Failed to start user service: %s", bus_error(&error, r));
-                        dbus_error_free(&error);
-
-                        free(service);
-                } else {
-                        u->service = service;
-
-                        free(u->service_job);
-                        u->service_job = job;
-                }
-        }
-
-        if (u->service)
-                hashmap_put(u->manager->user_units, u->service, u);
-
-        return 0;
-}
-
 int user_start(User *u) {
         int r;
 
@@ -419,11 +382,6 @@ int user_start(User *u) {
 
         /* Create cgroup */
         r = user_start_slice(u);
-        if (r < 0)
-                return r;
-
-        /* Spawn user systemd */
-        r = user_start_service(u);
         if (r < 0)
                 return r;
 
