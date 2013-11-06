@@ -1362,7 +1362,7 @@ static int list_jobs(DBusConnection *bus, char **args) {
         }
         free(jobs);
 
-        return 0;
+        return r;
 }
 
 static int cancel_job(DBusConnection *bus, char **args) {
