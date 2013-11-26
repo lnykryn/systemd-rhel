@@ -68,6 +68,9 @@
 /* How many entries to keep in the entry array chain cache at max */
 #define CHAIN_CACHE_MAX 20
 
+/* How much to increase the journal file size at once each time we allocate something new. */
+#define FILE_SIZE_INCREASE (8ULL*1024ULL*1024ULL)              /* 8MB */
+
 int journal_file_set_online(JournalFile *f) {
         assert(f);
 
@@ -218,8 +221,7 @@ static int journal_file_refresh_header(JournalFile *f) {
         journal_file_set_online(f);
 
         /* Sync the online state to disk */
-        msync(f->header, PAGE_ALIGN(sizeof(Header)), MS_SYNC);
-        fdatasync(f->fd);
+        fsync(f->fd);
 
         return 0;
 }
@@ -313,7 +315,7 @@ static int journal_file_verify_header(JournalFile *f) {
 }
 
 static int journal_file_allocate(JournalFile *f, uint64_t offset, uint64_t size) {
-        uint64_t old_size, new_size;
+        uint64_t old_size, new_size, file_size;
         int r;
 
         assert(f);
@@ -333,12 +335,10 @@ static int journal_file_allocate(JournalFile *f, uint64_t offset, uint64_t size)
         if (new_size <= old_size)
                 return 0;
 
-        if (f->metrics.max_size > 0 &&
-            new_size > f->metrics.max_size)
+        if (f->metrics.max_size > 0 && new_size > f->metrics.max_size)
                 return -E2BIG;
 
-        if (new_size > f->metrics.min_size &&
-            f->metrics.keep_free > 0) {
+        if (new_size > f->metrics.min_size && f->metrics.keep_free > 0) {
                 struct statvfs svfs;
 
                 if (fstatvfs(f->fd, &svfs) >= 0) {
@@ -363,8 +363,16 @@ static int journal_file_allocate(JournalFile *f, uint64_t offset, uint64_t size)
         if (r != 0)
                 return -r;
 
-        if (fstat(f->fd, &f->last_stat) < 0)
-                return -errno;
+        /* Increase the file size a bit further than this, so that we
+         * we can create larger memory maps to cache */
+        file_size = ((new_size+FILE_SIZE_INCREASE-1) / FILE_SIZE_INCREASE) * FILE_SIZE_INCREASE;
+        if (file_size > (uint64_t) f->last_stat.st_size) {
+                if (file_size > new_size)
+                        ftruncate(f->fd, file_size);
+
+                if (fstat(f->fd, &f->last_stat) < 0)
+                        return -errno;
+        }
 
         f->header->arena_size = htole64(new_size - le64toh(f->header->header_size));
 
@@ -1344,7 +1352,7 @@ int journal_file_append_entry(JournalFile *f, const dual_timestamp *ts, const st
 
         /* Order by the position on disk, in order to improve seek
          * times for rotating media. */
-        qsort(items, n_iovec, sizeof(EntryItem), entry_item_cmp);
+        qsort_safe(items, n_iovec, sizeof(EntryItem), entry_item_cmp);
 
         r = journal_file_append_entry_internal(f, ts, xor_hash, items, n_iovec, seqnum, ret, offset);
 
@@ -2551,7 +2559,7 @@ fail:
 }
 
 int journal_file_rotate(JournalFile **f, bool compress, bool seal) {
-        char *p;
+        _cleanup_free_ char *p = NULL;
         size_t l;
         JournalFile *old_file, *new_file = NULL;
         int r;
@@ -2568,22 +2576,15 @@ int journal_file_rotate(JournalFile **f, bool compress, bool seal) {
                 return -EINVAL;
 
         l = strlen(old_file->path);
-
-        p = new(char, l + 1 + 32 + 1 + 16 + 1 + 16 + 1);
-        if (!p)
+        r = asprintf(&p, "%.*s@" SD_ID128_FORMAT_STR "-%016"PRIx64"-%016"PRIx64".journal",
+                     (int) l - 8, old_file->path,
+                     SD_ID128_FORMAT_VAL(old_file->header->seqnum_id),
+                     le64toh((*f)->header->head_entry_seqnum),
+                     le64toh((*f)->header->head_entry_realtime));
+        if (r < 0)
                 return -ENOMEM;
 
-        memcpy(p, old_file->path, l - 8);
-        p[l-8] = '@';
-        sd_id128_to_string(old_file->header->seqnum_id, p + l - 8 + 1);
-        snprintf(p + l - 8 + 1 + 32, 1 + 16 + 1 + 16 + 8 + 1,
-                 "-%016"PRIx64"-%016"PRIx64".journal",
-                 le64toh((*f)->header->head_entry_seqnum),
-                 le64toh((*f)->header->head_entry_realtime));
-
         r = rename(old_file->path, p);
-        free(p);
-
         if (r < 0)
                 return -errno;
 
@@ -2634,7 +2635,7 @@ int journal_file_open_reliably(
 
         l = strlen(fname);
         if (asprintf(&p, "%.*s@%016llx-%016llx.journal~",
-                     (int) (l-8), fname,
+                     (int) l - 8, fname,
                      (unsigned long long) now(CLOCK_REALTIME),
                      random_ull()) < 0)
                 return -ENOMEM;
