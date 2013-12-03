@@ -287,4 +287,18 @@ do {                                                                    \
 #define SET_FLAG(v, flag, b) \
         (v) = (b) ? ((v) | (flag)) : ((v) & ~(flag))
 
+#define IN_SET(x, ...)                                                  \
+        ({                                                              \
+                const typeof(x) _x = (x);                               \
+                unsigned _i;                                            \
+                bool _found = false;                                    \
+                for (_i = 0; _i < sizeof((const typeof(_x)[]) { __VA_ARGS__ })/sizeof(const typeof(_x)); _i++) \
+                        if (((const typeof(_x)[]) { __VA_ARGS__ })[_i] == _x) { \
+                                _found = true;                          \
+                                break;                                  \
+                        }                                               \
+                _found;                                                 \
+        })
+
+
 #include "log.h"
