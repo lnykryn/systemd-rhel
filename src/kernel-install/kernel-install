@@ -71,6 +71,42 @@ fi
 KERNEL_VERSION="$1"
 KERNEL_IMAGE="$2"
 
+if [[ -x /sbin/new-kernel-pkg ]]; then
+    KERNEL_DIR="${KERNEL_IMAGE%/*}"
+    if [[ "${KERNEL_DIR}" != "/boot" ]]; then
+        for i in \
+            "$KERNEL_IMAGE" \
+            "$KERNEL_DIR/.${KERNEL_IMAGE##*/}.hmac" \
+            "$KERNEL_DIR"/System.map \
+            "$KERNEL_DIR"/config \
+            "$KERNEL_DIR"/zImage.stub \
+            "$KERNEL_DIR"/dtb \
+            ; do
+            [[ -e "$i" ]] || continue
+            cp -a "$i" "/boot/${i##*/}-${KERNEL_VERSION}"
+        done
+    fi
+
+    [[ "$KERNEL_VERSION" == *\+* ]] && flavor=-"${KERNEL_VERSION##*+}"
+    case "$COMMAND" in
+        add)
+            /sbin/new-kernel-pkg --package "kernel${flavor}" --install "$KERNEL_VERSION" || exit $?
+            /sbin/new-kernel-pkg --package "kernel${flavor}" --mkinitrd --dracut --depmod --update "$KERNEL_VERSION" || exit $?
+            /sbin/new-kernel-pkg --package "kernel${flavor}" --rpmposttrans "$KERNEL_VERSION" || exit $?
+            ;;
+        remove)
+            /sbin/new-kernel-pkg --package "kernel${flavor+-$flavor}" --rminitrd --rmmoddep --remove "$KERNEL_VERSION" || exit $?
+            ;;
+        *)
+            ;;
+    esac
+
+    # exit, if we can't find a boot loader spec conforming setup
+    if ! [[ -d /boot/loader/entries || -L /boot/loader/entries ]]; then
+        exit 0
+    fi
+fi
+
 if [[ -f /etc/machine-id ]]; then
     read MACHINE_ID < /etc/machine-id
 fi
