@@ -268,9 +268,6 @@ static int on_runlevel(Context *c) {
                         return q;
                 }
 
-                /* Hmm, we didn't find any runlevel, that means we
-                 * have been rebooted */
-                r = on_reboot(c);
                 previous = 0;
         }
 
