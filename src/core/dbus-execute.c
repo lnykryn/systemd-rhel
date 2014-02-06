@@ -429,6 +429,7 @@ const BusProperty bus_exec_context_properties[] = {
         { "PrivateNetwork",           bus_property_append_bool,              "b", offsetof(ExecContext, private_network)              },
         { "SameProcessGroup",         bus_property_append_bool,              "b", offsetof(ExecContext, same_pgrp)                    },
         { "UtmpIdentifier",           bus_property_append_string,            "s", offsetof(ExecContext, utmp_id),                true },
+        { "SELinuxContext",           bus_property_append_string,            "s", offsetof(ExecContext, selinux_context),        true },
         { "IgnoreSIGPIPE",            bus_property_append_bool,              "b", offsetof(ExecContext, ignore_sigpipe)               },
         { "NoNewPrivileges",          bus_property_append_bool,              "b", offsetof(ExecContext, no_new_privileges)            },
         { "SystemCallFilter",         bus_execute_append_syscall_filter,    "au", 0                                                   },

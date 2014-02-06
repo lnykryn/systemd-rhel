@@ -46,6 +46,10 @@
 #include <security/pam_appl.h>
 #endif
 
+#ifdef HAVE_SELINUX
+#include <selinux/selinux.h>
+#endif
+
 #include "execute.h"
 #include "strv.h"
 #include "macro.h"
@@ -1467,6 +1471,20 @@ int exec_spawn(ExecCommand *command,
                                         goto fail_child;
                                 }
                         }
+#ifdef HAVE_SELINUX
+                        if (context->selinux_context) {
+                                err = security_check_context(context->selinux_context);
+                                if (err < 0) {
+                                        r = EXIT_SELINUX_CONTEXT;
+                                        goto fail_child;
+                                }
+                                err = setexeccon(context->selinux_context);
+                                if (err < 0) {
+                                        r = EXIT_SELINUX_CONTEXT;
+                                        goto fail_child;
+                                }
+                        }
+#endif
                 }
 
                 our_env = new0(char*, 7);
@@ -1695,6 +1713,9 @@ void exec_context_done(ExecContext *c, bool reloading_or_reexecuting) {
 
         free(c->utmp_id);
         c->utmp_id = NULL;
+
+        free(c->selinux_context);
+        c->selinux_context = NULL;
 
         free(c->syscall_filter);
         c->syscall_filter = NULL;
@@ -2067,6 +2088,12 @@ void exec_context_dump(ExecContext *c, FILE* f, const char *prefix) {
                 fprintf(f,
                         "%sUtmpIdentifier: %s\n",
                         prefix, c->utmp_id);
+
+        if (c->selinux_context)
+                fprintf(f,
+                        "%sSELinuxContext: %s\n",
+                        prefix, c->selinux_context);
+
 }
 
 void exec_status_start(ExecStatus *s, pid_t pid) {

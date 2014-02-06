@@ -131,6 +131,9 @@ const char* exit_status_to_string(ExitStatus status, ExitStatusLevel level) {
                 case EXIT_SECCOMP:
                         return "SECCOMP";
 
+                case EXIT_SELINUX_CONTEXT:
+                        return "SELINUX_CONTEXT";
+
                 case EXIT_CHOWN:
                         return "CHOWN";
 
