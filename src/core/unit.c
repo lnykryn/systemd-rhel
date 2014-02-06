@@ -3113,7 +3113,7 @@ int unit_kill_context(
                 } else {
                         wait_for_exit = !main_pid_alien;
 
-                        if (c->send_sighup)
+                        if (c->send_sighup && !sigkill)
                                 kill(main_pid, SIGHUP);
                 }
         }
@@ -3131,7 +3131,7 @@ int unit_kill_context(
                 } else {
                         wait_for_exit = true;
 
-                        if (c->send_sighup)
+                        if (c->send_sighup && !sigkill)
                                 kill(control_pid, SIGHUP);
                 }
         }
@@ -3149,8 +3149,20 @@ int unit_kill_context(
                         if (r != -EAGAIN && r != -ESRCH && r != -ENOENT)
                                 log_warning_unit(u->id, "Failed to kill control group: %s", strerror(-r));
                 } else if (r > 0) {
-                        wait_for_exit = true;
-                        if (c->send_sighup) {
+
+                        /* FIXME: Now, we don't actually wait for any
+                         * of the processes that are neither control
+                         * nor main process. We should wait for them
+                         * of course, but that's hard since the cgroup
+                         * notification logic is so unreliable. It is
+                         * not available at all in containers, and on
+                         * the host it gets confused by
+                         * subgroups. Hence, for now, let's not wait
+                         * for these processes -- but when the kernel
+                         * gets fixed we really should correct
+                         * that. */
+
+                        if (c->send_sighup && !sigkill) {
                                 set_free(pid_set);
 
                                 pid_set = unit_pid_set(main_pid, control_pid);
