@@ -1927,7 +1927,7 @@ static DBusHandlerResult manager_message_handler(
                 if (!session)
                         return bus_send_error_reply(connection, message, &error, -ENOENT);
 
-                r = session_stop(session);
+                r = session_stop(session, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 
@@ -1950,7 +1950,7 @@ static DBusHandlerResult manager_message_handler(
                 if (!user)
                         return bus_send_error_reply(connection, message, &error, -ENOENT);
 
-                r = user_stop(user);
+                r = user_stop(user, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 
@@ -1973,7 +1973,7 @@ static DBusHandlerResult manager_message_handler(
                 if (!seat)
                         return bus_send_error_reply(connection, message, &error, -ENOENT);
 
-                r = seat_stop_sessions(seat);
+                r = seat_stop_sessions(seat, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 
