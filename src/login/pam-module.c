@@ -86,31 +86,24 @@ static int get_user_data(
 
         const char *username = NULL;
         struct passwd *pw = NULL;
-        uid_t uid;
         int r;
 
         assert(handle);
         assert(ret_username);
         assert(ret_pw);
 
-        r = audit_loginuid_from_pid(0, &uid);
-        if (r >= 0)
-                pw = pam_modutil_getpwuid(handle, uid);
-        else {
-                r = pam_get_user(handle, &username, NULL);
-                if (r != PAM_SUCCESS) {
-                        pam_syslog(handle, LOG_ERR, "Failed to get user name.");
-                        return r;
-                }
-
-                if (isempty(username)) {
-                        pam_syslog(handle, LOG_ERR, "User name not valid.");
-                        return PAM_AUTH_ERR;
-                }
-
-                pw = pam_modutil_getpwnam(handle, username);
+        r = pam_get_user(handle, &username, NULL);
+        if (r != PAM_SUCCESS) {
+                pam_syslog(handle, LOG_ERR, "Failed to get user name.");
+                return r;
         }
 
+        if (isempty(username)) {
+                pam_syslog(handle, LOG_ERR, "User name not valid.");
+                return PAM_AUTH_ERR;
+        }
+
+        pw = pam_modutil_getpwnam(handle, username);
         if (!pw) {
                 pam_syslog(handle, LOG_ERR, "Failed to get user data.");
                 return PAM_USER_UNKNOWN;
@@ -123,16 +116,14 @@ static int get_user_data(
 }
 
 static int get_seat_from_display(const char *display, const char **seat, uint32_t *vtnr) {
-        _cleanup_free_ char *p = NULL;
-        int r;
+        _cleanup_free_ char *p = NULL, *tty=NULL;
         _cleanup_close_ int fd = -1;
         union sockaddr_union sa = {
                 .un.sun_family = AF_UNIX,
         };
         struct ucred ucred;
         socklen_t l;
-        _cleanup_free_ char *tty = NULL;
-        int v;
+        int v, r;
 
         assert(display);
         assert(vtnr);
@@ -186,14 +177,14 @@ _public_ PAM_EXTERN int pam_sm_open_session(
         bool debug = false;
         const char *username, *id, *object_path, *runtime_path, *service = NULL, *tty = NULL, *display = NULL, *remote_user = NULL, *remote_host = NULL, *seat = NULL, *type = NULL, *class = NULL, *class_pam = NULL, *cvtnr = NULL;
         DBusError error;
-        uint32_t uid, pid;
         DBusMessageIter iter;
         int session_fd = -1;
         DBusConnection *bus = NULL;
         DBusMessage *m = NULL, *reply = NULL;
         dbus_bool_t remote, existing;
         int r;
-        uint32_t vtnr = 0;
+        uint32_t uid, pid, vtnr = 0;
+        uid_t original_uid;
 
         assert(handle);
 
@@ -389,6 +380,7 @@ _public_ PAM_EXTERN int pam_sm_open_session(
                                    DBUS_TYPE_OBJECT_PATH, &object_path,
                                    DBUS_TYPE_STRING, &runtime_path,
                                    DBUS_TYPE_UNIX_FD, &session_fd,
+                                   DBUS_TYPE_UINT32, &original_uid,
                                    DBUS_TYPE_STRING, &seat,
                                    DBUS_TYPE_UINT32, &vtnr,
                                    DBUS_TYPE_BOOLEAN, &existing,
@@ -409,10 +401,18 @@ _public_ PAM_EXTERN int pam_sm_open_session(
                 goto finish;
         }
 
-        r = pam_misc_setenv(handle, "XDG_RUNTIME_DIR", runtime_path, 0);
-        if (r != PAM_SUCCESS) {
-                pam_syslog(handle, LOG_ERR, "Failed to set runtime dir.");
-                goto finish;
+        if (original_uid == pw->pw_uid) {
+               /* Don't set $XDG_RUNTIME_DIR if the user we now
+                * authenticated for does not match the original user
+                * of the session. We do this in order not to result
+                * in privileged apps clobbering the runtime directory
+                * unnecessarily. */
+
+                r = pam_misc_setenv(handle, "XDG_RUNTIME_DIR", runtime_path, 0);
+                if (r != PAM_SUCCESS) {
+                        pam_syslog(handle, LOG_ERR, "Failed to set runtime dir.");
+                        return r;
+                }
         }
 
         if (!isempty(seat)) {
