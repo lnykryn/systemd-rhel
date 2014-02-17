@@ -2904,7 +2904,6 @@ static int drop_in_file(Unit *u, UnitSetPropertiesMode mode, const char *name, c
         assert(name);
         assert(_p);
         assert(_q);
-        assert(mode & (UNIT_PERSISTENT|UNIT_RUNTIME));
 
         b = xescape(name, "/.");
         if (!b)
@@ -2923,7 +2922,7 @@ static int drop_in_file(Unit *u, UnitSetPropertiesMode mode, const char *name, c
                         return -ENOENT;
 
                 p = strjoin(c, "/", u->id, ".d", NULL);
-        } else if (mode & UNIT_PERSISTENT)
+        } else if (mode == UNIT_PERSISTENT && !u->transient)
                 p = strjoin("/etc/systemd/system/", u->id, ".d", NULL);
         else
                 p = strjoin("/run/systemd/system/", u->id, ".d", NULL);
@@ -2949,7 +2948,7 @@ int unit_write_drop_in(Unit *u, UnitSetPropertiesMode mode, const char *name, co
         assert(name);
         assert(data);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         r = drop_in_file(u, mode, name, &p, &q);
@@ -2969,7 +2968,7 @@ int unit_write_drop_in_format(Unit *u, UnitSetPropertiesMode mode, const char *n
         assert(name);
         assert(format);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         va_start(ap, format);
@@ -2992,7 +2991,7 @@ int unit_write_drop_in_private(Unit *u, UnitSetPropertiesMode mode, const char *
         if (!UNIT_VTABLE(u)->private_section)
                 return -EINVAL;
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         ndata = strjoin("[", UNIT_VTABLE(u)->private_section, "]\n", data, NULL);
@@ -3011,7 +3010,7 @@ int unit_write_drop_in_private_format(Unit *u, UnitSetPropertiesMode mode, const
         assert(name);
         assert(format);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         va_start(ap, format);
@@ -3030,7 +3029,7 @@ int unit_remove_drop_in(Unit *u, UnitSetPropertiesMode mode, const char *name) {
 
         assert(u);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         r = drop_in_file(u, mode, name, &p, &q);
