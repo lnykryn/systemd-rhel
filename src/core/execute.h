@@ -124,6 +124,7 @@ struct ExecContext {
 
         char *utmp_id;
 
+        bool selinux_context_ignore;
         char *selinux_context;
 
         char **read_write_dirs, **read_only_dirs, **inaccessible_dirs;

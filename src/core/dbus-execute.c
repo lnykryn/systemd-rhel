@@ -372,6 +372,30 @@ static int bus_execute_append_syscall_filter(DBusMessageIter *i, const char *pro
         return 0;
 }
 
+static int bus_execute_append_selinux_context(DBusMessageIter *i, const char *property, void *data) {
+        ExecContext *c = data;
+        dbus_bool_t selinux_context_ignore;
+        const char *selinux_context = NULL;
+
+        assert(i);
+        assert(property);
+        assert(c);
+
+        selinux_context = c->selinux_context;
+        if (!selinux_context)
+                selinux_context = "";
+
+        selinux_context_ignore = c->selinux_context_ignore;
+
+        if (!dbus_message_iter_append_basic(i, DBUS_TYPE_BOOLEAN, &selinux_context_ignore))
+                return -ENOMEM;
+
+        if (!dbus_message_iter_append_basic(i, DBUS_TYPE_STRING, &selinux_context))
+                return -ENOMEM;
+
+        return 0;
+}
+
 const BusProperty bus_exec_context_properties[] = {
         { "Environment",              bus_property_append_strv,             "as", offsetof(ExecContext, environment),            true },
         { "EnvironmentFiles",         bus_execute_append_env_files,      "a(sb)", offsetof(ExecContext, environment_files),      true },
@@ -429,7 +453,7 @@ const BusProperty bus_exec_context_properties[] = {
         { "PrivateNetwork",           bus_property_append_bool,              "b", offsetof(ExecContext, private_network)              },
         { "SameProcessGroup",         bus_property_append_bool,              "b", offsetof(ExecContext, same_pgrp)                    },
         { "UtmpIdentifier",           bus_property_append_string,            "s", offsetof(ExecContext, utmp_id),                true },
-        { "SELinuxContext",           bus_property_append_string,            "s", offsetof(ExecContext, selinux_context),        true },
+        { "SELinuxContext",           bus_execute_append_selinux_context, "(bs)", 0                                                   },
         { "IgnoreSIGPIPE",            bus_property_append_bool,              "b", offsetof(ExecContext, ignore_sigpipe)               },
         { "NoNewPrivileges",          bus_property_append_bool,              "b", offsetof(ExecContext, no_new_privileges)            },
         { "SystemCallFilter",         bus_execute_append_syscall_filter,    "au", 0                                                   },
