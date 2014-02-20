@@ -923,8 +923,8 @@ static int unit_add_default_dependencies(Unit *u) {
 
         Unit *target;
         Iterator i;
-        int r;
         unsigned k;
+        int r = 0;
 
         assert(u);
 
