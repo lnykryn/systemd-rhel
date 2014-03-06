@@ -4143,9 +4143,10 @@ static int show_enviroment(DBusConnection *bus, char **args) {
 }
 
 static int switch_root(DBusConnection *bus, char **args) {
+        _cleanup_free_ char *cmdline_init = NULL;
+        const char *root, *init;
         unsigned l;
-        const char *root;
-        _cleanup_free_ char *init = NULL;
+        int r;
 
         l = strv_length(args);
         if (l < 2 || l > 3) {
@@ -4156,19 +4157,35 @@ static int switch_root(DBusConnection *bus, char **args) {
         root = args[1];
 
         if (l >= 3)
-                init = strdup(args[2]);
+                init = args[2];
         else {
-                parse_env_file("/proc/cmdline", WHITESPACE,
-                               "init", &init,
-                               NULL);
+                r = parse_env_file("/proc/cmdline", WHITESPACE,
+                                   "init", &cmdline_init,
+                                   NULL);
+                if (r < 0)
+                        log_debug("Failed to parse /proc/cmdline: %s", strerror(-r));
 
-                if (!init)
-                        init = strdup("");
+                init = cmdline_init;
         }
         if (!init)
                 return log_oom();
 
-        log_debug("switching root - root: %s; init: %s", root, init);
+        if (isempty(init))
+                init = NULL;
+
+        if (init) {
+                const char *root_systemd_path = NULL, *root_init_path = NULL;
+
+                root_systemd_path = strappenda(root, "/" SYSTEMD_BINARY_PATH);
+                root_init_path = strappenda3(root, "/", init);
+
+                /* If the passed init is actually the same as the
+                 * systemd binary, then let's suppress it. */
+                if (files_same(root_init_path, root_systemd_path) > 0)
+                        init = NULL;
+        }
+
+        log_debug("Switching root - root: %s; init: %s", root, strna(init));
 
         return bus_method_call_with_reply(
                         bus,
