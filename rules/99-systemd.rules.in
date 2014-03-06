@@ -25,6 +25,9 @@ SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="md*", ATTR{md/array_state}=="
 # Ignore nbd devices in the "add" event, with "change" the nbd is ready
 ACTION=="add", SUBSYSTEM=="block", KERNEL=="nbd*", ENV{SYSTEMD_READY}="0"
 
+# Ignore loop devices that don't have any file attached
+ACTION=="add|change", KERNEL=="loop[0-9]*", TEST!="loop/backing_file", ENV{SYSTEMD_READY}="0"
+
 # We need a hardware independent way to identify network devices. We
 # use the /sys/subsystem path for this. Current vanilla kernels don't
 # actually support that hierarchy right now, however upcoming kernels
