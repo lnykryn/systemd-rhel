@@ -1536,11 +1536,12 @@ static int manager_process_signal_fd(Manager *m) {
                 }
 
                 case SIGUSR2: {
-                        FILE *f;
-                        char *dump = NULL;
+                        _cleanup_free_ char *dump = NULL;
+                        _cleanup_fclose_ FILE *f = NULL;
                         size_t size;
 
-                        if (!(f = open_memstream(&dump, &size))) {
+                        f = open_memstream(&dump, &size);
+                        if (!f) {
                                 log_warning("Failed to allocate memory stream.");
                                 break;
                         }
@@ -1549,16 +1550,16 @@ static int manager_process_signal_fd(Manager *m) {
                         manager_dump_jobs(m, f, "\t");
 
                         if (ferror(f)) {
-                                fclose(f);
-                                free(dump);
                                 log_warning("Failed to write status stream");
                                 break;
                         }
 
-                        fclose(f);
-                        log_dump(LOG_INFO, dump);
-                        free(dump);
+                        if (fflush(f)) {
+                                log_warning("Failed to flush status stream");
+                                break;
+                        }
 
+                        log_dump(LOG_INFO, dump);
                         break;
                 }
 
