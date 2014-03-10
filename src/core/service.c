@@ -2353,7 +2353,15 @@ static void service_enter_reload(Service *s) {
                                   !s->root_directory_start_only,
                                   false,
                                   false,
+#ifdef HAVE_SYSV_COMPAT
+                                  /* Don't create extra cgroup for SysV services.
+                                   * Unfortunately common practice was to have reload as an alias
+                                   * for restart and we are killing the new main process, when destroying
+                                   * cgroup for the control process*/
+                                  !s->is_sysv,
+#else
                                   true,
+#endif
                                   &s->control_pid);
                 if (r < 0)
                         goto fail;
@@ -3174,7 +3182,10 @@ static void service_sigchld_event(Unit *u, pid_t pid, int code, int status) {
                 /* Immediately get rid of the cgroup, so that the
                  * kernel doesn't delay the cgroup empty messages for
                  * the service cgroup any longer than necessary */
-                service_kill_control_processes(s);
+#ifdef HAVE_SYSV_COMPAT
+                if (!s->is_sysv)
+#endif
+                        service_kill_control_processes(s);
 
                 if (s->control_command &&
                     s->control_command->command_next &&
