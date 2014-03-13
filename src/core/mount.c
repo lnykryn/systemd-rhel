@@ -1414,7 +1414,7 @@ static int mount_add_one(
                 bool set_flags) {
         int r;
         Unit *u;
-        bool delete, changed = false;;
+        bool delete, changed = false;
         char *e, *w = NULL, *o = NULL, *f = NULL;
         MountParameters *p;
         bool load_extras = false;
