@@ -1503,7 +1503,7 @@ int main(int argc, char *argv[]) {
                 kmod_setup();
 #endif
                 hostname_setup();
-                machine_id_setup();
+                machine_id_setup("");
                 loopback_setup();
 
                 test_mtab();
