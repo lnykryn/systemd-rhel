@@ -181,12 +181,14 @@ int session_save(Session *s) {
                 "USER=%s\n"
                 "ACTIVE=%i\n"
                 "STATE=%s\n"
-                "REMOTE=%i\n",
-                s->user->uid,
+                "REMOTE=%i\n"
+                "STOPPING=%i\n",
+                (unsigned long) s->user->uid,
                 s->user->name,
                 session_is_active(s),
                 session_state_to_string(session_get_state(s)),
-                s->remote);
+                s->remote,
+                s->stopping);
 
         if (s->type >= 0)
                 fprintf(f, "TYPE=%s\n", session_type_to_string(s->type));
@@ -309,7 +311,8 @@ int session_load(Session *s) {
                 *uid = NULL,
                 *realtime = NULL,
                 *monotonic = NULL,
-                *controller = NULL;
+                *controller = NULL,
+                *stopping = NULL;
 
         int k, r;
 
@@ -337,6 +340,7 @@ int session_load(Session *s) {
                            "REALTIME",       &realtime,
                            "MONOTONIC",      &monotonic,
                            "CONTROLLER",     &controller,
+                           "STOPPING",       &stopping,
                            NULL);
 
         if (r < 0)
@@ -453,6 +457,11 @@ int session_load(Session *s) {
                         session_restore_vt(s);
         }
 
+        if (stopping) {
+                k = parse_boolean(stopping);
+                if (k >= 0)
+                        s->stopping = k;
+        }
         return r;
 }
 
