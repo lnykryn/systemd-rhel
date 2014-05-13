@@ -272,7 +272,7 @@ static void worker_new(struct event *event)
                 for (;;) {
                         struct udev_event *udev_event;
                         struct worker_message msg;
-                        int err;
+                        int err = 0;
 
                         log_debug("seq %llu running\n", udev_device_get_seqnum(dev));
                         udev_event = udev_event_new(dev);
@@ -288,13 +288,12 @@ static void worker_new(struct event *event)
                                 udev_event->exec_delay = exec_delay;
 
                         /* apply rules, create node, symlinks */
-                        err = udev_event_execute_rules(udev_event, rules, &sigmask_orig);
+                        udev_event_execute_rules(udev_event, rules, &sigmask_orig);
 
-                        if (err == 0)
-                                udev_event_execute_run(udev_event, &sigmask_orig);
+                        udev_event_execute_run(udev_event, &sigmask_orig);
 
                         /* apply/restore inotify watch */
-                        if (err == 0 && udev_event->inotify_watch) {
+                        if (udev_event->inotify_watch) {
                                 udev_watch_begin(udev, dev);
                                 udev_device_update_db(dev);
                         }
@@ -304,8 +303,8 @@ static void worker_new(struct event *event)
 
                         /* send udevd the result of the event execution */
                         memset(&msg, 0, sizeof(struct worker_message));
-                        if (err != 0)
-                                msg.exitcode = err;
+
+                        msg.exitcode = err;
                         msg.pid = getpid();
                         send(worker_watch[WRITE_END], &msg, sizeof(struct worker_message), 0);
 
