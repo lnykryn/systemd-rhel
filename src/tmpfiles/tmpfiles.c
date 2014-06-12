@@ -990,7 +990,9 @@ static int process_item(Item *i) {
 }
 
 static void item_free(Item *i) {
-        assert(i);
+
+        if (!i)
+                return;
 
         free(i->path);
         free(i->argument);
@@ -1122,7 +1124,7 @@ static int parse_line(const char *fname, unsigned line, const char *buffer) {
                 }
         }
 
-        switch(type) {
+        switch (type) {
 
         case CREATE_FILE:
         case TRUNCATE_FILE:
@@ -1171,7 +1173,7 @@ static int parse_line(const char *fname, unsigned line, const char *buffer) {
         }
 
         default:
-                log_error("[%s:%u] Unknown file type '%c'.", fname, line, type);
+                log_error("[%s:%u] Unknown command type '%c'.", fname, line, type);
                 return -EBADMSG;
         }
 
@@ -1355,9 +1357,11 @@ static int parse_argv(int argc, char *argv[]) {
                         break;
 
                 case ARG_ROOT:
+                        free(arg_root);
                         arg_root = path_make_absolute_cwd(optarg);
                         if (!arg_root)
                                 return log_oom();
+
                         path_kill_slashes(arg_root);
                         break;
 
@@ -1456,7 +1460,7 @@ int main(int argc, char *argv[]) {
 
         r = parse_argv(argc, argv);
         if (r <= 0)
-                return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+                goto finish;
 
         log_set_target(LOG_TARGET_AUTO);
         log_parse_environment();
