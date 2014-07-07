@@ -187,6 +187,7 @@ struct Service {
         char *bus_name;
 
         char *status_text;
+        int status_errno;
 
         RateLimit start_limit;
         StartLimitAction start_limit_action;
