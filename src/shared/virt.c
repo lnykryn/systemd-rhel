@@ -175,6 +175,22 @@ int detect_vm(const char **id) {
                 return 1;
         }
 
+#if defined(__s390__)
+        {
+                _cleanup_free_ char *t = NULL;
+
+                r = get_status_field("/proc/sysinfo", "VM00 Control Program:", &t);
+                if (r >= 0) {
+                        if (streq(t, "z/VM"))
+                                _id = "zvm";
+                        else
+                                _id = "kvm";
+
+                        return 1;
+                }
+        }
+#endif
+
         return 0;
 }
 
