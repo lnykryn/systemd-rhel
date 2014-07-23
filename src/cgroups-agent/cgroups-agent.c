@@ -50,7 +50,11 @@ int main(int argc, char *argv[]) {
 
         bus = dbus_connection_open_private("unix:path=/run/systemd/private", &error);
         if (!bus) {
-                log_warning("Failed to get D-Bus connection: %s", bus_error_message(&error));
+                log_warning("Failed to get D-Bus connection: %s", strerror(-r));
+                /* If we couldn't connect we assume this was triggered
+                 * while systemd got restarted/transitioned from
+                 * initrd to the system, so let's ignore this */
+                log_debug("Failed to get D-Bus connection: %s", strerror(-r));
                 goto finish;
         }
 
@@ -73,7 +77,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!dbus_connection_send(bus, m, NULL)) {
-                log_error("Failed to send signal message on private connection.");
+                log_debug("Failed to send signal message on private connection.");
                 goto finish;
         }
 
