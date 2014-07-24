@@ -221,6 +221,7 @@ Socket.Service,                  config_parse_socket_service,        0,         
 Socket.SmackLabel,               config_parse_string,                0,                             offsetof(Socket, smack)
 Socket.SmackLabelIPIn,           config_parse_string,                0,                             offsetof(Socket, smack_ip_in)
 Socket.SmackLabelIPOut,          config_parse_string,                0,                             offsetof(Socket, smack_ip_out)
+Socket.SELinuxContextFromNet,    config_parse_bool,                  0,                             offsetof(Socket, selinux_context_from_net),
 EXEC_CONTEXT_CONFIG_ITEMS(Socket)m4_dnl
 CGROUP_CONTEXT_CONFIG_ITEMS(Socket)m4_dnl
 KILL_CONTEXT_CONFIG_ITEMS(Socket)m4_dnl
