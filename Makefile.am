@@ -1830,8 +1830,14 @@ systemd_reply_password_LDADD = \
 systemd_cgls_SOURCES = \
 	src/cgls/cgls.c
 
+systemd_cgls_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(DBUS_CFLAGS)
+
 systemd_cgls_LDADD = \
-	libsystemd-shared.la
+	libsystemd-shared.la \
+	libsystemd-dbus.la \
+	libudev.la
 
 # ------------------------------------------------------------------------------
 systemd_cgtop_SOURCES = \

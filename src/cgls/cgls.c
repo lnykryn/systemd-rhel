@@ -19,6 +19,7 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
+#include <dbus/dbus.h>
 #include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -35,6 +36,8 @@
 #include "build.h"
 #include "output-mode.h"
 #include "fileio.h"
+#include "dbus-common.h"
+#include "unit-name.h"
 
 static bool arg_no_pager = false;
 static bool arg_kernel_threads = false;
@@ -127,6 +130,10 @@ int main(int argc, char *argv[]) {
         int r = 0, retval = EXIT_FAILURE;
         int output_flags;
         char _cleanup_free_ *root = NULL;
+        DBusConnection *bus = NULL;
+        DBusError error;
+
+        dbus_error_init(&error);
 
         log_parse_environment();
         log_open();
@@ -145,6 +152,14 @@ int main(int argc, char *argv[]) {
                         if (arg_full == -1)
                                 arg_full = true;
                 }
+        }
+
+        bus = dbus_bus_get_private(DBUS_BUS_SYSTEM, &error);
+
+        if (!bus) {
+                printf("Failed to get D-Bus connection: %s", error.message);
+                retval = EXIT_FAILURE;
+                goto finish;
         }
 
         output_flags =
@@ -189,8 +204,67 @@ int main(int argc, char *argv[]) {
                 } else {
                         if (arg_machine) {
                                 char *m;
+                                const char *cgroup;
+                                const char *property = "ControlGroup";
+                                const char *interface = "org.freedesktop.systemd1.Scope";
+                                _cleanup_free_ char *scope = NULL;
+                                _cleanup_free_ char *path = NULL;
+                                _cleanup_dbus_message_unref_ DBusMessage *reply = NULL;
+                                DBusMessageIter iter, sub;
+
                                 m = strappenda("/run/systemd/machines/", arg_machine);
-                                r = parse_env_file(m, NEWLINE, "CGROUP", &root, NULL);
+                                r = parse_env_file(m, NEWLINE, "SCOPE", &scope, NULL);
+
+                                if (r < 0) {
+                                        log_error("Failed to get machine path: %s", strerror(-r));
+                                        goto finish;
+                                }
+
+                                path = unit_dbus_path_from_name(scope);
+                                if (!path) {
+                                        r = log_oom();
+                                        goto finish;
+                                }
+
+                                r = bus_method_call_with_reply(
+                                                bus,
+                                                "org.freedesktop.systemd1",
+                                                path,
+                                                "org.freedesktop.DBus.Properties",
+                                                "Get",
+                                                &reply,
+                                                &error,
+                                                DBUS_TYPE_STRING, &interface,
+                                                DBUS_TYPE_STRING, &property,
+                                                DBUS_TYPE_INVALID);
+                                if (r < 0) {
+                                        log_error("Failed to query ControlGroup: %s", bus_error(&error, r));
+                                        dbus_error_free(&error);
+                                        goto finish;
+                                }
+
+                                if (!dbus_message_iter_init(reply, &iter) ||
+                                    dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT) {
+                                        log_error("Failed to parse reply.");
+                                        r = -EINVAL;
+                                        goto finish;
+                                }
+
+                                dbus_message_iter_recurse(&iter, &sub);
+                                if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING) {
+                                        log_error("Failed to parse reply.");
+                                        r = -EINVAL;
+                                        goto finish;
+                                }
+
+                                dbus_message_iter_get_basic(&sub, &cgroup);
+
+                                root = strdup(cgroup);
+                                if (!root) {
+                                        r = log_oom();
+                                        goto finish;
+                                }
+
                         } else
                                 r = cg_get_root_path(&root);
                         if (r < 0) {
@@ -211,6 +285,15 @@ int main(int argc, char *argv[]) {
                 retval = EXIT_SUCCESS;
 
 finish:
+
+        if (bus) {
+                dbus_connection_flush(bus);
+                dbus_connection_close(bus);
+                dbus_connection_unref(bus);
+        }
+
+        dbus_error_free(&error);
+        dbus_shutdown();
         pager_close();
 
         return retval;
