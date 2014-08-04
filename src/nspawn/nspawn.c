@@ -1305,7 +1305,7 @@ int main(int argc, char *argv[]) {
         bool saved_attr_valid = false;
         struct winsize ws;
         int kmsg_socket_pair[2] = { -1, -1 };
-        FDSet *fds = NULL;
+        _cleanup_fdset_free_ FDSet *fds = NULL;
 
         log_parse_environment();
         log_open();
@@ -1812,8 +1812,6 @@ finish:
 
         free(arg_directory);
         free(arg_machine);
-
-        fdset_free(fds);
 
         return r;
 }
