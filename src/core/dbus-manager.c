@@ -1581,14 +1581,13 @@ static DBusHandlerResult bus_manager_message_handler(DBusConnection *connection,
                    dbus_message_is_method_call(message, "org.freedesktop.systemd1.Manager", "SetDefaultTarget")) {
 
                 char **l = NULL;
+                char **i;
                 DBusMessageIter iter;
                 UnitFileScope scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
                 UnitFileChange *changes = NULL;
                 unsigned n_changes = 0;
                 dbus_bool_t runtime, force;
                 int carries_install_info = -1;
-
-                SELINUX_ACCESS_CHECK(connection, message, streq(member, "MaskUnitFiles") ? "disable" : "enable");
 
                 if (!dbus_message_iter_init(message, &iter))
                         goto oom;
@@ -1599,6 +1598,17 @@ static DBusHandlerResult bus_manager_message_handler(DBusConnection *connection,
                                 goto oom;
 
                         return bus_send_error_reply(connection, message, NULL, r);
+                }
+
+                STRV_FOREACH(i, l) {
+                        Unit *u;
+
+                        r = manager_load_unit(m, *i, NULL, NULL, &u);
+                        if (r < 0) {
+                                dbus_set_error(&error, BUS_ERROR_NO_SUCH_UNIT, "Unit %s does not exist.", *i);
+                                return bus_send_error_reply(connection, message, &error, -ENOENT);
+                        }
+                        SELINUX_UNIT_ACCESS_CHECK(u, connection, message, streq(member, "MaskUnitFiles") ? "disable" : "enable");
                 }
 
                 if (!dbus_message_iter_next(&iter) ||
@@ -1644,13 +1654,12 @@ static DBusHandlerResult bus_manager_message_handler(DBusConnection *connection,
                    dbus_message_is_method_call(message, "org.freedesktop.systemd1.Manager", "UnmaskUnitFiles")) {
 
                 char **l = NULL;
+                char **i;
                 DBusMessageIter iter;
                 UnitFileScope scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
                 UnitFileChange *changes = NULL;
                 unsigned n_changes = 0;
                 dbus_bool_t runtime;
-
-                SELINUX_ACCESS_CHECK(connection, message, streq(member, "UnmaskUnitFiles") ? "enable" : "disable");
 
                 if (!dbus_message_iter_init(message, &iter))
                         goto oom;
@@ -1667,6 +1676,17 @@ static DBusHandlerResult bus_manager_message_handler(DBusConnection *connection,
                     bus_iter_get_basic_and_next(&iter, DBUS_TYPE_BOOLEAN, &runtime, false) < 0) {
                         strv_free(l);
                         return bus_send_error_reply(connection, message, NULL, -EIO);
+                }
+
+                STRV_FOREACH(i, l) {
+                        Unit *u;
+
+                        r = manager_load_unit(m, *i, NULL, NULL, &u);
+                        if (r < 0) {
+                                dbus_set_error(&error, BUS_ERROR_NO_SUCH_UNIT, "Unit %s does not exist.", *i);
+                                return bus_send_error_reply(connection, message, &error, -ENOENT);
+                        }
+                        SELINUX_UNIT_ACCESS_CHECK(u, connection, message, streq(member, "UnmaskUnitFiles") ? "enable" : "disable");
                 }
 
                 if (streq(member, "DisableUnitFiles"))
