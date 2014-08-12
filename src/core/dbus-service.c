@@ -64,6 +64,7 @@
         "  <property name=\"ControlPID\" type=\"u\" access=\"read\"/>\n" \
         "  <property name=\"BusName\" type=\"s\" access=\"read\"/>\n"   \
         "  <property name=\"StatusText\" type=\"s\" access=\"read\"/>\n" \
+        "  <property name=\"StatusErrno\" type=\"i\" access=\"read\"/>\n" \
         "  <property name=\"Result\" type=\"s\" access=\"read\"/>\n"    \
        " </interface>\n"
 
@@ -96,6 +97,7 @@ const char bus_service_invalidating_properties[] =
         "MainPID\0"
         "ControlPID\0"
         "StatusText\0"
+        "StatusErrno\0"
         "Result\0";
 
 static DEFINE_BUS_PROPERTY_APPEND_ENUM(bus_service_append_type, service_type, ServiceType);
@@ -144,6 +146,7 @@ static const BusProperty bus_service_properties[] = {
         { "ControlPID",             bus_property_append_pid,          "u", offsetof(Service, control_pid)                  },
         { "BusName",                bus_property_append_string,       "s", offsetof(Service, bus_name),               true },
         { "StatusText",             bus_property_append_string,       "s", offsetof(Service, status_text),            true },
+        { "StatusErrno",            bus_property_append_int,          "i", offsetof(Service, status_errno)                 },
         { "Result",                 bus_service_append_service_result,"s", offsetof(Service, result)                       },
         {}
 };
