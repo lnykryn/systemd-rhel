@@ -2480,6 +2480,7 @@ typedef struct UnitStatusInfo {
         const char *status_text;
         const char *pid_file;
         bool running:1;
+        int status_errno;
 
         usec_t start_timestamp;
         usec_t exit_timestamp;
@@ -2751,6 +2752,8 @@ static void print_status_info(UnitStatusInfo *i,
 
         if (i->status_text)
                 printf("   Status: \"%s\"\n", i->status_text);
+        if (i->status_errno > 0)
+                printf("   Error: %i (%s)\n", i->status_errno, strerror(i->status_errno));
 
         if (i->control_group &&
             (i->main_pid > 0 || i->control_pid > 0 || cg_is_empty_recursive(SYSTEMD_CGROUP_CONTROLLER, i->control_group, false) == 0)) {
@@ -2963,6 +2966,8 @@ static int status_property(const char *name, DBusMessageIter *iter, UnitStatusIn
                         i->exit_code = (int) j;
                 else if (streq(name, "ExecMainStatus"))
                         i->exit_status = (int) j;
+                else if (streq(name, "StatusErrno"))
+                        i->status_errno = (int) j;
 
                 break;
         }
