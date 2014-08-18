@@ -3519,9 +3519,6 @@ static void service_notify_message(Unit *u, pid_t pid, char **tags) {
 
                         log_debug_unit(u->id,
                                        "%s: got %s", u->id, e);
-
-                        free(s->status_text);
-                        s->status_text = t;
                 } else
                         t = NULL;
 
