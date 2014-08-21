@@ -44,8 +44,10 @@
         BUS_CGROUP_CONTEXT_INTERFACE                                    \
         "  <property name=\"ControlPID\" type=\"u\" access=\"read\"/>\n" \
         "  <property name=\"BindToDevice\" type=\"s\" access=\"read\"/>\n" \
-        "  <property name=\"DirectoryMode\" type=\"u\" access=\"read\"/>\n" \
+        "  <property name=\"SocketUser\" type=\"s\" access=\"read\"/>\n" \
+        "  <property name=\"SocketGroup\" type=\"s\" access=\"read\"/>\n" \
         "  <property name=\"SocketMode\" type=\"u\" access=\"read\"/>\n" \
+        "  <property name=\"DirectoryMode\" type=\"u\" access=\"read\"/>\n" \
         "  <property name=\"Accept\" type=\"b\" access=\"read\"/>\n"    \
         "  <property name=\"KeepAlive\" type=\"b\" access=\"read\"/>\n" \
         "  <property name=\"Priority\" type=\"i\" access=\"read\"/>\n"  \
@@ -172,8 +174,10 @@ static const BusProperty bus_socket_properties[] = {
         BUS_EXEC_COMMAND_PROPERTY("ExecStopPost",  offsetof(Socket, exec_command[SOCKET_EXEC_STOP_POST]),  true ),
         { "ControlPID",     bus_property_append_pid,           "u", offsetof(Socket, control_pid)     },
         { "BindToDevice",   bus_property_append_string,        "s", offsetof(Socket, bind_to_device), true },
-        { "DirectoryMode",  bus_property_append_mode,          "u", offsetof(Socket, directory_mode)  },
+        { "SocketUser",     bus_property_append_string,        "s", offsetof(Socket, user),           true },
+        { "SocketGroup",    bus_property_append_string,        "s", offsetof(Socket, group),          true },
         { "SocketMode",     bus_property_append_mode,          "u", offsetof(Socket, socket_mode)     },
+        { "DirectoryMode",  bus_property_append_mode,          "u", offsetof(Socket, directory_mode)  },
         { "Accept",         bus_property_append_bool,          "b", offsetof(Socket, accept)          },
         { "KeepAlive",      bus_property_append_bool,          "b", offsetof(Socket, keep_alive)      },
         { "Priority",       bus_property_append_int,           "i", offsetof(Socket, priority)        },
