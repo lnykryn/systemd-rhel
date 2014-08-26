@@ -39,10 +39,12 @@
 
 static int files_add(Hashmap *h, const char *root, const char *path, const char *suffix) {
         _cleanup_closedir_ DIR *dir = NULL;
-        _cleanup_free_ char *dirpath = NULL;
+        char *dirpath;
 
-        if (asprintf(&dirpath, "%s%s", root ? root : "", path) < 0)
-                return -ENOMEM;
+        assert(path);
+        assert(suffix);
+
+        dirpath = strappenda(root ? root : "", path);
 
         dir = opendir(dirpath);
         if (!dir) {
@@ -104,7 +106,7 @@ static int conf_files_list_strv_internal(char ***strv, const char *suffix, const
         assert(suffix);
 
         /* This alters the dirs string array */
-        if (!path_strv_canonicalize_uniq(dirs))
+        if (!path_strv_canonicalize_absolute_uniq(dirs, root))
                 return -ENOMEM;
 
         fh = hashmap_new(string_hash_func, string_compare_func);

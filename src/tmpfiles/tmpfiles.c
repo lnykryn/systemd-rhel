@@ -110,6 +110,7 @@ static bool arg_boot = false;
 
 static char **include_prefixes = NULL;
 static char **exclude_prefixes = NULL;
+static char *arg_root = NULL;
 
 static const char conf_file_dirs[] =
         "/etc/tmpfiles.d\0"
@@ -1186,6 +1187,15 @@ static int parse_line(const char *fname, unsigned line, const char *buffer) {
         if (!should_include_path(i->path))
                 return 0;
 
+        if (arg_root) {
+                char *p = strappend(arg_root, i->path);
+                if (!p)
+                        return log_oom();
+
+                free(i->path);
+                i->path = p;
+        }
+
         if (user && !streq(user, "-")) {
                 const char *u = user;
 
@@ -1274,7 +1284,8 @@ static int help(void) {
                "     --remove               Remove marked files/directories\n"
                "     --boot                 Execute actions only safe at boot\n"
                "     --prefix=PATH          Only apply rules that apply to paths with the specified prefix\n"
-               "     --exclude-prefix=PATH  Ignore rules that apply to paths with the specified prefix\n",
+               "     --exclude-prefix=PATH  Ignore rules that apply to paths with the specified prefix\n"
+               "     --root=PATH            Operate on an alternate filesystem root\n",
                program_invocation_short_name);
 
         return 0;
@@ -1289,6 +1300,7 @@ static int parse_argv(int argc, char *argv[]) {
                 ARG_BOOT,
                 ARG_PREFIX,
                 ARG_EXCLUDE_PREFIX,
+                ARG_ROOT,
         };
 
         static const struct option options[] = {
@@ -1299,7 +1311,8 @@ static int parse_argv(int argc, char *argv[]) {
                 { "boot",           no_argument,         NULL, ARG_BOOT           },
                 { "prefix",         required_argument,   NULL, ARG_PREFIX         },
                 { "exclude-prefix", required_argument,   NULL, ARG_EXCLUDE_PREFIX },
-                { NULL,             0,                   NULL, 0                  }
+                { "root",           required_argument,   NULL, ARG_ROOT           },
+                {}
         };
 
         int c;
@@ -1332,13 +1345,20 @@ static int parse_argv(int argc, char *argv[]) {
                         break;
 
                 case ARG_PREFIX:
-                        if (strv_extend(&include_prefixes, optarg) < 0)
+                        if (strv_push(&include_prefixes, optarg) < 0)
                                 return log_oom();
                         break;
 
                 case ARG_EXCLUDE_PREFIX:
-                        if (strv_extend(&exclude_prefixes, optarg) < 0)
+                        if (strv_push(&exclude_prefixes, optarg) < 0)
                                 return log_oom();
+                        break;
+
+                case ARG_ROOT:
+                        arg_root = path_make_absolute_cwd(optarg);
+                        if (!arg_root)
+                                return log_oom();
+                        path_kill_slashes(arg_root);
                         break;
 
                 case '?':
@@ -1368,7 +1388,7 @@ static int read_config_file(const char *fn, bool ignore_enoent) {
 
         assert(fn);
 
-        r = search_and_fopen_nulstr(fn, "re", conf_file_dirs, &f);
+        r = search_and_fopen_nulstr(fn, "re", arg_root, conf_file_dirs, &f);
         if (r < 0) {
                 if (ignore_enoent && r == -ENOENT)
                         return 0;
@@ -1469,7 +1489,7 @@ int main(int argc, char *argv[]) {
                 _cleanup_strv_free_ char **files = NULL;
                 char **f;
 
-                r = conf_files_list_nulstr(&files, ".conf", NULL, conf_file_dirs);
+                r = conf_files_list_nulstr(&files, ".conf", arg_root, conf_file_dirs);
                 if (r < 0) {
                         log_error("Failed to enumerate tmpfiles.d files: %s", strerror(-r));
                         goto finish;
@@ -1498,7 +1518,9 @@ finish:
         hashmap_free(items);
         hashmap_free(globs);
 
-        strv_free(include_prefixes);
+        free(include_prefixes);
+        free(exclude_prefixes);
+        free(arg_root);
 
         set_free_free(unix_sockets);
 

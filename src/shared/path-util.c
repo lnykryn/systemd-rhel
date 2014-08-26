@@ -165,7 +165,7 @@ char **path_strv_make_absolute_cwd(char **l) {
         return l;
 }
 
-char **path_strv_canonicalize(char **l) {
+char **path_strv_canonicalize_absolute(char **l, const char *prefix) {
         char **s;
         unsigned k = 0;
         bool enomem = false;
@@ -179,27 +179,62 @@ char **path_strv_canonicalize(char **l) {
 
         STRV_FOREACH(s, l) {
                 char *t, *u;
+                _cleanup_free_ char *orig = NULL;
 
-                t = path_make_absolute_cwd(*s);
-                free(*s);
-                *s = NULL;
-
-                if (!t) {
-                        enomem = true;
+                if (!path_is_absolute(*s)) {
+                        free(*s);
                         continue;
                 }
+
+                if (prefix) {
+                        orig = *s;
+                        t = strappend(prefix, orig);
+                        if (!t) {
+                                enomem = true;
+                                continue;
+                        }
+                } else
+                        t = *s;
 
                 errno = 0;
                 u = canonicalize_file_name(t);
                 if (!u) {
-                        if (errno == ENOENT)
-                                u = t;
-                        else {
+                        if (errno == ENOENT) {
+                                if (prefix) {
+                                        u = orig;
+                                        orig = NULL;
+                                        free(t);
+                                } else
+                                        u = t;
+                        } else {
                                 free(t);
-                                if (errno == ENOMEM || !errno)
+                                if (errno == ENOMEM || errno == 0)
                                         enomem = true;
 
                                 continue;
+                        }
+                } else if (prefix) {
+                        char *x;
+
+                        free(t);
+                        x = path_startswith(u, prefix);
+                        if (x) {
+                                /* restore the slash if it was lost */
+                                if (!startswith(x, "/"))
+                                        *(--x) = '/';
+
+                                t = strdup(x);
+                                free(u);
+                                if (!t) {
+                                        enomem = true;
+                                        continue;
+                                }
+                                u = t;
+                        } else {
+                                /* canonicalized path goes outside of
+                                 * prefix, keep the original path instead */
+                                u = orig;
+                                orig = NULL;
                         }
                 } else
                         free(t);
@@ -215,11 +250,12 @@ char **path_strv_canonicalize(char **l) {
         return l;
 }
 
-char **path_strv_canonicalize_uniq(char **l) {
+char **path_strv_canonicalize_absolute_uniq(char **l, const char *prefix) {
+
         if (strv_isempty(l))
                 return l;
 
-        if (!path_strv_canonicalize(l))
+        if (!path_strv_canonicalize_absolute(l, prefix))
                 return NULL;
 
         return strv_uniq(l);

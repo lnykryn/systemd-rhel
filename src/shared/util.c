@@ -3311,19 +3311,27 @@ bool on_tty(void) {
         return cached_on_tty;
 }
 
+int files_same(const char *filea, const char *fileb) {
+        struct stat a, b;
+
+        if (stat(filea, &a) < 0)
+                return -errno;
+
+        if (stat(fileb, &b) < 0)
+                return -errno;
+
+        return a.st_dev == b.st_dev &&
+               a.st_ino == b.st_ino;
+}
+
 int running_in_chroot(void) {
-        struct stat a = {}, b = {};
+        int ret;
 
-        /* Only works as root */
-        if (stat("/proc/1/root", &a) < 0)
-                return -errno;
+        ret = files_same("/proc/1/root", "/");
+        if (ret < 0)
+                return ret;
 
-        if (stat("/", &b) < 0)
-                return -errno;
-
-        return
-                a.st_dev != b.st_dev ||
-                a.st_ino != b.st_ino;
+        return ret == 0;
 }
 
 char *ellipsize_mem(const char *s, size_t old_length, size_t new_length, unsigned percent) {
@@ -4478,22 +4486,6 @@ int dirent_ensure_type(DIR *d, struct dirent *de) {
                 S_ISCHR(st.st_mode)  ? DT_CHR  :
                 S_ISBLK(st.st_mode)  ? DT_BLK  :
                                        DT_UNKNOWN;
-
-        return 0;
-}
-
-int in_search_path(const char *path, char **search) {
-        char **i;
-        _cleanup_free_ char *parent = NULL;
-        int r;
-
-        r = path_get_parent(path, &parent);
-        if (r < 0)
-                return r;
-
-        STRV_FOREACH(i, search)
-                if (path_equal(parent, *i))
-                        return 1;
 
         return 0;
 }
@@ -5666,14 +5658,14 @@ int on_ac_power(void) {
         return found_online || !found_offline;
 }
 
-static int search_and_fopen_internal(const char *path, const char *mode, char **search, FILE **_f) {
+static int search_and_fopen_internal(const char *path, const char *mode, const char *root, char **search, FILE **_f) {
         char **i;
 
         assert(path);
         assert(mode);
         assert(_f);
 
-        if (!path_strv_canonicalize_uniq(search))
+        if (!path_strv_canonicalize_absolute_uniq(search, root))
                 return -ENOMEM;
 
         STRV_FOREACH(i, search) {
@@ -5697,7 +5689,7 @@ static int search_and_fopen_internal(const char *path, const char *mode, char **
         return -ENOENT;
 }
 
-int search_and_fopen(const char *path, const char *mode, const char **search, FILE **_f) {
+int search_and_fopen(const char *path, const char *mode, const char *root, const char **search, FILE **_f) {
         _cleanup_strv_free_ char **copy = NULL;
 
         assert(path);
@@ -5720,10 +5712,10 @@ int search_and_fopen(const char *path, const char *mode, const char **search, FI
         if (!copy)
                 return -ENOMEM;
 
-        return search_and_fopen_internal(path, mode, copy, _f);
+        return search_and_fopen_internal(path, mode, root, copy, _f);
 }
 
-int search_and_fopen_nulstr(const char *path, const char *mode, const char *search, FILE **_f) {
+int search_and_fopen_nulstr(const char *path, const char *mode, const char *root, const char *search, FILE **_f) {
         _cleanup_strv_free_ char **s = NULL;
 
         if (path_is_absolute(path)) {
@@ -5742,7 +5734,7 @@ int search_and_fopen_nulstr(const char *path, const char *mode, const char *sear
         if (!s)
                 return -ENOMEM;
 
-        return search_and_fopen_internal(path, mode, s, _f);
+        return search_and_fopen_internal(path, mode, root, s, _f);
 }
 
 int create_tmp_dir(char template[], char** dir_name) {

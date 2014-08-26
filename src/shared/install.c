@@ -47,7 +47,40 @@ typedef struct {
 #define _cleanup_lookup_paths_free_ _cleanup_(lookup_paths_free)
 #define _cleanup_install_context_done_ _cleanup_(install_context_done)
 
-static int lookup_paths_init_from_scope(LookupPaths *paths, UnitFileScope scope) {
+static int in_search_path(const char *path, char **search, const char *root_dir) {
+        _cleanup_free_ char *parent = NULL;
+        char **i;
+        int r;
+
+        assert(path);
+
+        r = path_get_parent(path, &parent);
+        if (r < 0)
+                return r;
+
+        STRV_FOREACH(i, search) {
+                _cleanup_free_ char *buf = NULL;
+                const char *p;
+
+                if (root_dir) {
+                        buf = strjoin(root_dir, "/", *i, NULL);
+                        if (!buf)
+                                return -ENOMEM;
+
+                        p = buf;
+                } else
+                        p = *i;
+
+                if (path_equal(parent, p))
+                        return 1;
+        }
+
+        return 0;
+}
+
+static int lookup_paths_init_from_scope(LookupPaths *paths,
+                                        UnitFileScope scope,
+                                        const char *root_dir) {
         assert(paths);
         assert(scope >= 0);
         assert(scope < _UNIT_FILE_SCOPE_MAX);
@@ -57,6 +90,7 @@ static int lookup_paths_init_from_scope(LookupPaths *paths, UnitFileScope scope)
         return lookup_paths_init(paths,
                                  scope == UNIT_FILE_SYSTEM ? SYSTEMD_SYSTEM : SYSTEMD_USER,
                                  scope == UNIT_FILE_USER,
+                                 root_dir,
                                  NULL, NULL, NULL);
 }
 
@@ -705,7 +739,7 @@ int unit_file_link(
         assert(scope >= 0);
         assert(scope < _UNIT_FILE_SCOPE_MAX);
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 
@@ -738,7 +772,7 @@ int unit_file_link(
                         continue;
                 }
 
-                q = in_search_path(*i, paths.unit_path);
+                q = in_search_path(*i, paths.unit_path, root_dir);
                 if (q < 0)
                         return q;
 
@@ -1039,67 +1073,64 @@ static int unit_file_search(
         assert(info);
         assert(paths);
 
-        if (info->path)
-                return unit_file_load(c, info, info->path, allow_symlink);
+        if (info->path) {
+                char *full_path = NULL;
+
+                if (!isempty(root_dir))
+                        full_path = strappenda(root_dir, info->path);
+
+                return unit_file_load(c, info, full_path ?: info->path, allow_symlink);
+        }
 
         assert(info->name);
 
         STRV_FOREACH(p, paths->unit_path) {
-                char *path = NULL;
+                _cleanup_free_ char *path = NULL, *full_path = NULL;
 
-                if (isempty(root_dir))
-                        asprintf(&path, "%s/%s", *p, info->name);
-                else
-                        asprintf(&path, "%s/%s/%s", root_dir, *p, info->name);
-
+                path = strjoin(*p, "/", info->name, NULL);
                 if (!path)
                         return -ENOMEM;
 
-                r = unit_file_load(c, info, path, allow_symlink);
+                if (!isempty(root_dir)) {
+                        full_path = strappend(root_dir, path);
+                        if (!full_path)
+                                return -ENOMEM;
+                }
 
-                if (r >= 0)
+                r = unit_file_load(c, info, full_path ?: path, allow_symlink);
+                if (r >= 0) {
                         info->path = path;
-                else {
-                        if (r == -ENOENT && unit_name_is_instance(info->name)) {
-                                /* Unit file doesn't exist, however instance enablement was requested.
-                                 * We will check if it is possible to load template unit file. */
-                                char *template = NULL,
-                                     *template_path = NULL,
-                                     *template_dir = NULL;
+                        path = NULL;
+                } else if (r == -ENOENT && unit_name_is_instance(info->name)) {
+                        /* Unit file doesn't exist, however instance enablement was requested.
+                         * We will check if it is possible to load template unit file. */
+                        _cleanup_free_ char *template = NULL, *template_dir = NULL;
 
-                                template = unit_name_template(info->name);
-                                if (!template) {
-                                        free(path);
+                        template = unit_name_template(info->name);
+                        if (!template)
+                                return -ENOMEM;
+
+                        /* We will reuse path variable since we don't need it anymore. */
+                        template_dir = path;
+                        *(strrchr(template_dir, '/') + 1) = '\0';
+
+                        path = strappend(template_dir, template);
+                        if (!path)
+                                return -ENOMEM;
+
+                        if (!isempty(root_dir)) {
+                                free(full_path);
+                                full_path = strappend(root_dir, path);
+                                if (!full_path)
                                         return -ENOMEM;
-                                }
-
-                                /* We will reuse path variable since we don't need it anymore. */
-                                template_dir = path;
-                                *(strrchr(path, '/') + 1) = '\0';
-
-                                template_path = strjoin(template_dir, template, NULL);
-                                if (!template_path) {
-                                        free(path);
-                                        free(template);
-                                        return -ENOMEM;
-                                }
-
-                                /* Let's try to load template unit. */
-                                r = unit_file_load(c, info, template_path, allow_symlink);
-                                if (r >= 0) {
-                                        info->path = strdup(template_path);
-                                        if (!info->path) {
-                                                free(path);
-                                                free(template);
-                                                free(template_path);
-                                                return -ENOMEM;
-                                        }
-                                }
-
-                                free(template);
-                                free(template_path);
                         }
-                        free(path);
+
+                        /* Let's try to load template unit. */
+                        r = unit_file_load(c, info, full_path ?: path, allow_symlink);
+                        if (r >= 0) {
+                                info->path = path;
+                                path = NULL;
+                        }
                 }
 
                 if (r != -ENOENT && r != -ELOOP)
@@ -1293,6 +1324,7 @@ static int install_info_symlink_link(
                 InstallInfo *i,
                 LookupPaths *paths,
                 const char *config_path,
+                const char *root_dir,
                 bool force,
                 UnitFileChange **changes,
                 unsigned *n_changes) {
@@ -1305,7 +1337,7 @@ static int install_info_symlink_link(
         assert(config_path);
         assert(i->path);
 
-        r = in_search_path(i->path, paths->unit_path);
+        r = in_search_path(i->path, paths->unit_path, root_dir);
         if (r != 0)
                 return r;
 
@@ -1320,6 +1352,7 @@ static int install_info_apply(
                 InstallInfo *i,
                 LookupPaths *paths,
                 const char *config_path,
+                const char *root_dir,
                 bool force,
                 UnitFileChange **changes,
                 unsigned *n_changes) {
@@ -1340,7 +1373,7 @@ static int install_info_apply(
         if (r == 0)
                 r = q;
 
-        q = install_info_symlink_link(i, paths, config_path, force, changes, n_changes);
+        q = install_info_symlink_link(i, paths, config_path, root_dir, force, changes, n_changes);
         if (r == 0)
                 r = q;
 
@@ -1380,7 +1413,7 @@ static int install_context_apply(
                 } else if (r >= 0)
                         r += q;
 
-                q = install_info_apply(i, paths, config_path, force, changes, n_changes);
+                q = install_info_apply(i, paths, config_path, root_dir, force, changes, n_changes);
                 if (r >= 0 && q < 0)
                         r = q;
         }
@@ -1476,7 +1509,7 @@ int unit_file_enable(
         assert(scope >= 0);
         assert(scope < _UNIT_FILE_SCOPE_MAX);
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 
@@ -1516,7 +1549,7 @@ int unit_file_disable(
         assert(scope >= 0);
         assert(scope < _UNIT_FILE_SCOPE_MAX);
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 
@@ -1578,7 +1611,7 @@ int unit_file_set_default(
         if (unit_name_to_type(file) != UNIT_TARGET)
                 return -EINVAL;
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 
@@ -1613,7 +1646,11 @@ int unit_file_get_default(
         char **p;
         int r;
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        assert(scope >= 0);
+        assert(scope < _UNIT_FILE_SCOPE_MAX);
+        assert(name);
+
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 
@@ -1665,12 +1702,13 @@ UnitFileState unit_file_get_state(
         if (!unit_name_is_valid(name, true))
                 return -EINVAL;
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 
         STRV_FOREACH(i, paths.unit_path) {
                 struct stat st;
+                char *partial;
 
                 free(path);
                 path = NULL;
@@ -1679,9 +1717,13 @@ UnitFileState unit_file_get_state(
                         asprintf(&path, "%s/%s/%s", root_dir, *i, name);
                 else
                         asprintf(&path, "%s/%s", *i, name);
-
                 if (!path)
                         return -ENOMEM;
+
+                if (root_dir)
+                        partial = path + strlen(root_dir) + 1;
+                else
+                        partial = path;
 
                 /*
                  * Search for a unit file in our default paths, to
@@ -1714,7 +1756,7 @@ UnitFileState unit_file_get_state(
                 else if (r > 0)
                         return state;
 
-                r = unit_file_can_install(&paths, root_dir, path, true);
+                r = unit_file_can_install(&paths, root_dir, partial, true);
                 if (r < 0 && errno != ENOENT)
                         return r;
                 else if (r > 0)
@@ -1728,7 +1770,7 @@ UnitFileState unit_file_get_state(
 
 int unit_file_query_preset(UnitFileScope scope, const char *name) {
         _cleanup_strv_free_ char **files = NULL;
-        char **i;
+        char **p;
         int r;
 
         assert(scope >= 0);
@@ -1756,10 +1798,10 @@ int unit_file_query_preset(UnitFileScope scope, const char *name) {
         if (r < 0)
                 return r;
 
-        STRV_FOREACH(i, files) {
+        STRV_FOREACH(p, files) {
                 _cleanup_fclose_ FILE *f;
 
-                f = fopen(*i, "re");
+                f = fopen(*p, "re");
                 if (!f) {
                         if (errno == ENOENT)
                                 continue;
@@ -1822,7 +1864,7 @@ int unit_file_preset(
         assert(scope >= 0);
         assert(scope < _UNIT_FILE_SCOPE_MAX);
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 
@@ -1891,7 +1933,13 @@ int unit_file_get_list(
         if (root_dir && scope != UNIT_FILE_SYSTEM)
                 return -EINVAL;
 
-        r = lookup_paths_init_from_scope(&paths, scope);
+        if (root_dir) {
+                r = access(root_dir, F_OK);
+                if (r < 0)
+                        return -errno;
+        }
+
+        r = lookup_paths_init_from_scope(&paths, scope, root_dir);
         if (r < 0)
                 return r;
 

@@ -403,6 +403,8 @@ static inline const char *ansi_highlight_off(void) {
         return on_tty() ? ANSI_HIGHLIGHT_OFF : "";
 }
 
+int files_same(const char *filea, const char *fileb);
+
 int running_in_chroot(void);
 
 char *ellipsize(const char *s, size_t length, unsigned percent);
@@ -473,7 +475,6 @@ int glob_extend(char ***strv, const char *path);
 
 int dirent_ensure_type(DIR *d, struct dirent *de);
 
-int in_search_path(const char *path, char **search);
 int get_files_in_directory(const char *path, char ***list);
 
 char *strjoin(const char *x, ...) _sentinel_;
@@ -626,8 +627,8 @@ char *strip_tab_ansi(char **p, size_t *l);
 
 int on_ac_power(void);
 
-int search_and_fopen(const char *path, const char *mode, const char **search, FILE **_f);
-int search_and_fopen_nulstr(const char *path, const char *mode, const char *search, FILE **_f);
+int search_and_fopen(const char *path, const char *mode, const char *root, const char **search, FILE **_f);
+int search_and_fopen_nulstr(const char *path, const char *mode, const char *root, const char *search, FILE **_f);
 int create_tmp_dir(char template[], char** dir_name);
 
 #define FOREACH_LINE(line, f, on_error)                         \
@@ -722,6 +723,19 @@ int unlink_noerrno(const char *path);
                 _c_ = alloca(_x_ + _y_ + 1);            \
                 strcpy(stpcpy(_c_, _a_), _b_);          \
                 _c_;                                    \
+        })
+
+#define strappenda3(a, b, c)                                    \
+        ({                                                      \
+                const char *_a_ = (a), *_b_ = (b), *_c_ = (c);  \
+                char *_d_;                                      \
+                size_t _x_, _y_, _z_;                           \
+                _x_ = strlen(_a_);                              \
+                _y_ = strlen(_b_);                              \
+                _z_ = strlen(_c_);                              \
+                _d_ = alloca(_x_ + _y_ + _z_ + 1);              \
+                strcpy(stpcpy(stpcpy(_d_, _a_), _b_), _c_);     \
+                _d_;                                            \
         })
 
 #define procfs_file_alloca(pid, field)                                  \
