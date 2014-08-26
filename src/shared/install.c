@@ -1973,6 +1973,7 @@ int unit_file_get_list(
                         union dirent_storage buffer;
                         UnitFileList __attribute__((cleanup(unitfilelist_free)))
                                 *f = NULL;
+                        _cleanup_free_ char *path = NULL;
 
                         r = readdir_r(d, &buffer.de, &de);
                         if (r != 0)
@@ -2027,7 +2028,11 @@ int unit_file_get_list(
                                 goto found;
                         }
 
-                        r = unit_file_can_install(&paths, root_dir, f->path, true);
+                        path = path_make_absolute(de->d_name, *i);
+                        if (!path)
+                                return -ENOMEM;
+
+                        r = unit_file_can_install(&paths, root_dir, path, true);
                         if (r == -EINVAL ||  /* Invalid setting? */
                             r == -EBADMSG || /* Invalid format? */
                             r == -ENOENT     /* Included file not found? */)
