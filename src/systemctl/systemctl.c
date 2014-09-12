@@ -4147,8 +4147,8 @@ static int show_enviroment(DBusConnection *bus, char **args) {
 }
 
 static int switch_root(DBusConnection *bus, char **args) {
-        _cleanup_free_ char *cmdline_init = NULL;
-        const char *root, *init;
+        _cleanup_free_ char *init = NULL;
+        const char *root;
         unsigned l;
         int r;
 
@@ -4161,23 +4161,20 @@ static int switch_root(DBusConnection *bus, char **args) {
         root = args[1];
 
         if (l >= 3)
-                init = args[2];
+                init = strdup(args[2]);
         else {
                 r = parse_env_file("/proc/cmdline", WHITESPACE,
-                                   "init", &cmdline_init,
+                                   "init", &init,
                                    NULL);
                 if (r < 0)
                         log_debug("Failed to parse /proc/cmdline: %s", strerror(-r));
 
-                init = cmdline_init;
+                if (!init)
+                        init = strdup("");
         }
-        if (!init)
-                return log_oom();
 
-        if (isempty(init))
-                init = NULL;
 
-        if (init) {
+        if (!isempty(init)) {
                 const char *root_systemd_path = NULL, *root_init_path = NULL;
 
                 root_systemd_path = strappenda(root, "/" SYSTEMD_BINARY_PATH);
@@ -4185,9 +4182,14 @@ static int switch_root(DBusConnection *bus, char **args) {
 
                 /* If the passed init is actually the same as the
                  * systemd binary, then let's suppress it. */
-                if (files_same(root_init_path, root_systemd_path) > 0)
-                        init = NULL;
+                if (files_same(root_init_path, root_systemd_path) > 0) {
+                        free(init);
+                        init = strdup("");
+                }
         }
+
+        if (!init)
+                return log_oom();
 
         log_debug("Switching root - root: %s; init: %s", root, strna(init));
 
