@@ -182,9 +182,9 @@ int detect_vm(const char **id) {
                 r = get_status_field("/proc/sysinfo", "VM00 Control Program:", &t);
                 if (r >= 0) {
                         if (streq(t, "z/VM"))
-                                _id = "zvm";
+                                *id = "zvm";
                         else
-                                _id = "kvm";
+                                *id = "kvm";
 
                         return 1;
                 }
