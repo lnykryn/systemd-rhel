@@ -51,9 +51,23 @@ static const char conf_file_dirs[] =
 static char *normalize_sysctl(char *s) {
         char *n;
 
-        for (n = s; *n; n++)
+        n = strpbrk(s, "/.");
+        /* If the first separator is a slash, the path is
+         * assumed to be normalized and slashes remain slashes
+         * and dots remains dots. */
+        if (!n || *n == '/')
+                return s;
+
+        /* Otherwise, dots become slashes and slashes become
+         * dots. Fun. */
+        while (n) {
                 if (*n == '.')
                         *n = '/';
+                else
+                        *n = '.';
+
+                n = strpbrk(n + 1, "/.");
+        }
 
         return s;
 }
@@ -205,7 +219,7 @@ static int help(void) {
         printf("%s [OPTIONS...] [CONFIGURATION FILE...]\n\n"
                "Applies kernel sysctl settings.\n\n"
                "  -h --help             Show this help\n"
-               "     --prefix=PATH      Only apply rules that apply to paths with the specified prefix\n",
+               "     --prefix=PATH      Only apply rules with the specified prefix\n",
                program_invocation_short_name);
 
         return 0;
@@ -238,18 +252,22 @@ static int parse_argv(int argc, char *argv[]) {
 
                 case ARG_PREFIX: {
                         char *p;
-                        char **l;
 
-                        for (p = optarg; *p; p++)
-                                if (*p == '.')
-                                        *p = '/';
+                        /* We used to require people to specify absolute paths
+                         * in /proc/sys in the past. This is kinda useless, but
+                         * we need to keep compatibility. We now support any
+                         * sysctl name available. */
+                        normalize_sysctl(optarg);
+                        if (startswith(optarg, "/proc/sys"))
+                                p = strdup(optarg);
+                        else
+                                p = strappend("/proc/sys/", optarg);
 
-                        l = strv_append(arg_prefixes, optarg);
-                        if (!l)
+                        if (!p)
                                 return log_oom();
 
-                        strv_free(arg_prefixes);
-                        arg_prefixes = l;
+                        if (strv_push(&arg_prefixes, p) < 0)
+                                return log_oom();
 
                         break;
                 }
