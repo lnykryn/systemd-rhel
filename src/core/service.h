@@ -156,6 +156,7 @@ struct Service {
 
         pid_t main_pid, control_pid;
         int socket_fd;
+        bool socket_fd_selinux_context_net;
 
         int fsck_passno;
 
@@ -204,7 +205,7 @@ extern const UnitVTable service_vtable;
 
 struct Socket;
 
-int service_set_socket_fd(Service *s, int fd, struct Socket *socket);
+int service_set_socket_fd(Service *s, int fd, struct Socket *socket, bool selinux_context_net);
 
 const char* service_state_to_string(ServiceState i) _const_;
 ServiceState service_state_from_string(const char *s) _pure_;

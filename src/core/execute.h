@@ -124,6 +124,9 @@ struct ExecContext {
 
         char *utmp_id;
 
+        bool selinux_context_ignore;
+        char *selinux_context;
+
         char **read_write_dirs, **read_only_dirs, **inaccessible_dirs;
         unsigned long mount_flags;
 
@@ -171,6 +174,7 @@ int exec_spawn(ExecCommand *command,
                bool apply_chroot,
                bool apply_tty_stdin,
                bool confirm_spawn,
+               bool selinux_context_net,
                CGroupControllerMask cgroup_mask,
                const char *cgroup_path,
                const char *unit_id,

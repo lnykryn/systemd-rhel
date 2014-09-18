@@ -791,6 +791,7 @@ static int mount_spawn(Mount *m, ExecCommand *c, pid_t *_pid) {
                        true,
                        true,
                        UNIT(m)->manager->confirm_spawn,
+                       false,
                        UNIT(m)->manager->cgroup_supported,
                        UNIT(m)->cgroup_path,
                        UNIT(m)->id,

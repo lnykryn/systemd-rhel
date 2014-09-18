@@ -154,6 +154,8 @@ struct Socket {
         char *smack_ip_in;
         char *smack_ip_out;
 
+        bool selinux_context_from_net;
+
         char *user;
         char *group;
 };

@@ -1867,6 +1867,7 @@ static int service_spawn(
                        apply_chroot,
                        apply_tty_stdin,
                        UNIT(s)->manager->confirm_spawn,
+                       false,
                        UNIT(s)->manager->cgroup_supported,
                        path,
                        UNIT(s)->id,
@@ -3806,7 +3807,7 @@ static void service_bus_query_pid_done(
         }
 }
 
-int service_set_socket_fd(Service *s, int fd, Socket *sock) {
+int service_set_socket_fd(Service *s, int fd, Socket *sock, bool selinux_context_net) {
 
         assert(s);
         assert(fd >= 0);
@@ -3825,6 +3826,7 @@ int service_set_socket_fd(Service *s, int fd, Socket *sock) {
                 return -EAGAIN;
 
         s->socket_fd = fd;
+        s->socket_fd_selinux_context_net = selinux_context_net;
         s->got_socket_fd = true;
 
         unit_ref_set(&s->accept_socket, UNIT(sock));
