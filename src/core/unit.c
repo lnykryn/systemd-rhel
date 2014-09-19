@@ -2296,24 +2296,10 @@ int unit_serialize(Unit *u, FILE *f, FDSet *fds, bool serialize_jobs) {
         assert(f);
         assert(fds);
 
-        if (!unit_can_serialize(u))
-                return 0;
-
-        r = UNIT_VTABLE(u)->serialize(u, f, fds);
-        if (r < 0)
-                return r;
-
-
-        if (serialize_jobs) {
-                if (u->job) {
-                        fprintf(f, "job\n");
-                        job_serialize(u->job, f, fds);
-                }
-
-                if (u->nop_job) {
-                        fprintf(f, "job\n");
-                        job_serialize(u->nop_job, f, fds);
-                }
+        if (unit_can_serialize(u)) {
+                r = UNIT_VTABLE(u)->serialize(u, f, fds);
+                if (r < 0)
+                        return r;
         }
 
         dual_timestamp_serialize(f, "inactive-exit-timestamp", &u->inactive_exit_timestamp);
@@ -2329,6 +2315,18 @@ int unit_serialize(Unit *u, FILE *f, FDSet *fds, bool serialize_jobs) {
 
         if (u->cgroup_path)
                 unit_serialize_item(u, f, "cgroup", u->cgroup_path);
+
+        if (serialize_jobs) {
+                if (u->job) {
+                        fprintf(f, "job\n");
+                        job_serialize(u->job, f, fds);
+                }
+
+                if (u->nop_job) {
+                        fprintf(f, "job\n");
+                        job_serialize(u->nop_job, f, fds);
+                }
+        }
 
         /* End marker */
         fputc('\n', f);
@@ -2368,9 +2366,6 @@ int unit_deserialize(Unit *u, FILE *f, FDSet *fds) {
         assert(u);
         assert(f);
         assert(fds);
-
-        if (!unit_can_serialize(u))
-                return 0;
 
         for (;;) {
                 char line[LINE_MAX], *l, *v;
@@ -2484,9 +2479,11 @@ int unit_deserialize(Unit *u, FILE *f, FDSet *fds) {
                         continue;
                 }
 
-                r = UNIT_VTABLE(u)->deserialize_item(u, l, v, fds);
-                if (r < 0)
-                        return r;
+                if (unit_can_serialize(u)) {
+                        r = UNIT_VTABLE(u)->deserialize_item(u, l, v, fds);
+                        if (r < 0)
+                                return r;
+                }
         }
 }
 
