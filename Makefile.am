@@ -3567,7 +3567,8 @@ dist_udevrules_DATA += \
 	rules/78-sound-card.rules \
 	rules/80-net-setup-link.rules \
 	rules/95-udev-late.rules \
-	rules/40-redhat.rules
+	rules/40-redhat.rules \
+	rules/73-idrac.rules
 
 nodist_udevrules_DATA += \
 	rules/99-systemd.rules
