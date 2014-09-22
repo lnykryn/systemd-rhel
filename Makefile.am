@@ -2221,7 +2221,8 @@ dist_udevrules_DATA += \
 	rules/78-sound-card.rules \
 	rules/80-net-name-slot.rules \
 	rules/95-udev-late.rules \
-	rules/40-redhat.rules
+	rules/40-redhat.rules \
+	rules/73-idrac.rules
 
 dist_udevhwdb_DATA = \
 	hwdb/20-pci-vendor-model.hwdb \
