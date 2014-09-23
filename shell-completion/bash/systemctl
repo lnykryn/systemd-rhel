@@ -25,7 +25,7 @@ __systemctl() {
 __systemd_properties() {
         local mode=$1
         { __systemctl -a $mode show;
-         systemd --dump-configuration-items; } |
+         /usr/lib/systemd/systemd --dump-configuration-items; } |
         while IFS='=' read -r key value; do
             [[ $value ]] && echo "$key"
         done
@@ -76,6 +76,8 @@ _systemctl () {
                              --quiet -q --privileged -P --system --user --version --runtime'
                       [ARG]='--host -H --kill-mode --kill-who --property -p --signal -s --type -t --state --root'
         )
+
+        local -A PROPS='CPUAccounting= MemoryAccounting= BlockIOAccounting= MemoryLimit= CPUShares= BlockIOWeight= DevicePolicy= DeviceAllow= BlockIOReadBandwidth= BlockIOWriteBandwidth= BlockIODeviceWeight='
 
         if __contains_word "--user" ${COMP_WORDS[*]}; then
             mode=--user
@@ -136,6 +138,7 @@ _systemctl () {
              [MASKED_UNITS]='unmask'
                      [JOBS]='cancel'
                 [SNAPSHOTS]='delete'
+               [PROPERTIES]='set-property'
                      [ENVS]='set-environment unset-environment'
                [STANDALONE]='daemon-reexec daemon-reload default
                              emergency exit halt hibernate hybrid-sleep kexec list-jobs
@@ -220,6 +223,13 @@ _systemctl () {
         elif __contains_word "$verb" ${VERBS[TARGETS]}; then
                 comps=$( __systemctl $mode list-unit-files --type target --full --all \
                         | { while read -r a b; do echo " $a"; done; } )
+        elif __contains_word "$verb" ${VERBS[PROPERTIES]}; then
+                if __contains_word "$prev" ${VERBS[PROPERTIES]}; then
+                        comps=$( __get_active_units $mode )
+                else
+                        comps=$PROPS
+                        compopt -o nospace
+                fi
         fi
 
         COMPREPLY=( $(compgen -W '$comps' -- "$cur") )
