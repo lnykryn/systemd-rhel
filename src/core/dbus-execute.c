@@ -376,6 +376,7 @@ static int bus_execute_append_selinux_context(DBusMessageIter *i, const char *pr
         ExecContext *c = data;
         dbus_bool_t selinux_context_ignore;
         const char *selinux_context = NULL;
+        DBusMessageIter sub;
 
         assert(i);
         assert(property);
@@ -387,10 +388,16 @@ static int bus_execute_append_selinux_context(DBusMessageIter *i, const char *pr
 
         selinux_context_ignore = c->selinux_context_ignore;
 
-        if (!dbus_message_iter_append_basic(i, DBUS_TYPE_BOOLEAN, &selinux_context_ignore))
+        if (!dbus_message_iter_open_container(i, DBUS_TYPE_STRUCT, NULL, &sub))
                 return -ENOMEM;
 
-        if (!dbus_message_iter_append_basic(i, DBUS_TYPE_STRING, &selinux_context))
+        if (!dbus_message_iter_append_basic(&sub, DBUS_TYPE_BOOLEAN, &selinux_context_ignore))
+                return -ENOMEM;
+
+        if (!dbus_message_iter_append_basic(&sub, DBUS_TYPE_STRING, &selinux_context))
+                return -ENOMEM;
+
+        if (!dbus_message_iter_close_container(i, &sub))
                 return -ENOMEM;
 
         return 0;
