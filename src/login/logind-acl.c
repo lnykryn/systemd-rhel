@@ -283,8 +283,14 @@ int devnode_acl_all(struct udev *udev,
         }
 
         SET_FOREACH(n, nodes, i) {
+                int k;
+
                 log_debug("Fixing up ACLs at %s for seat %s", n, seat);
-                r = devnode_acl(n, flush, del, old_uid, add, new_uid);
+                k = devnode_acl(n, flush, del, old_uid, add, new_uid);
+                if (k == -ENOENT)
+                        log_debug("Device %s disappeared while setting ACLs", n);
+                else if (k < 0)
+                        r = k;
         }
 
 finish:

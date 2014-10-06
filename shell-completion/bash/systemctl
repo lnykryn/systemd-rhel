@@ -56,7 +56,7 @@ __get_all_units      () { __systemctl $1 list-units --all \
 __get_active_units   () { __systemctl $1 list-units       \
         | { while read -r a b; do echo " $a"; done; }; }
 __get_startable_units () { __systemctl $1 list-units --all -t service,timer,socket,mount,automount,path,snapshot,swap \
-        | { while read -r a b c d; do [[ $c == "inactive" || $c == "failed " ]] && echo " $a"; done; }; }
+        | { while read -r a b c d; do [[ $c == "inactive" || $c == "failed" ]] && echo " $a"; done; }; }
 __get_failed_units   () { __systemctl $1 list-units       \
         | { while read -r a b c d; do [[ $c == "failed"   ]] && echo " $a"; done; }; }
 __get_enabled_units  () { __systemctl $1 list-unit-files  \
@@ -74,7 +74,7 @@ _systemctl () {
                [STANDALONE]='--all -a --reverse --after --before --defaults --fail --ignore-dependencies --failed --force -f --full -l --global
                              --help -h --no-ask-password --no-block --no-legend --no-pager --no-reload --no-wall
                              --quiet -q --privileged -P --system --user --version --runtime'
-                      [ARG]='--host -H --kill-mode --kill-who --property -p --signal -s --type -t --state --root'
+                      [ARG]='--host -H --kill-who --property -p --signal -s --type -t --state --root'
         )
 
         local -A PROPS='CPUAccounting= MemoryAccounting= BlockIOAccounting= MemoryLimit= CPUShares= BlockIOWeight= DevicePolicy= DeviceAllow= BlockIOReadBandwidth= BlockIOWriteBandwidth= BlockIODeviceWeight='
@@ -100,9 +100,6 @@ _systemctl () {
                         ;;
                         --kill-who)
                                 comps='all control main'
-                        ;;
-                        --kill-mode)
-                                comps='control-group process'
                         ;;
                         --root)
                                 comps=$(compgen -A directory -- "$cur" )

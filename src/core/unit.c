@@ -923,8 +923,8 @@ static int unit_add_default_dependencies(Unit *u) {
 
         Unit *target;
         Iterator i;
-        int r;
         unsigned k;
+        int r = 0;
 
         assert(u);
 
@@ -1302,9 +1302,41 @@ static void unit_check_unneeded(Unit *u) {
                 if (unit_active_or_pending(other))
                         return;
 
-        log_info_unit(u->id, "Service %s is not needed anymore. Stopping.", u->id);
+        log_info_unit(u->id, "Unit %s is not needed anymore. Stopping.", u->id);
 
         /* Ok, nobody needs us anymore. Sniff. Then let's commit suicide */
+        manager_add_job(u->manager, JOB_STOP, u, JOB_FAIL, true, NULL, NULL);
+}
+
+static void unit_check_binds_to(Unit *u) {
+        bool stop = false;
+        Unit *other;
+        Iterator i;
+
+        assert(u);
+
+        if (u->job)
+                return;
+
+        if (unit_active_state(u) != UNIT_ACTIVE)
+                return;
+
+        SET_FOREACH(other, u->dependencies[UNIT_BINDS_TO], i) {
+                if (other->job)
+                        continue;
+
+                if (!UNIT_IS_INACTIVE_OR_FAILED(unit_active_state(other)))
+                        continue;
+
+                stop = true;
+        }
+
+        if (!stop)
+                return;
+
+        log_info_unit(u->id, "Unit %s is bound to inactive service. Stopping, too.", u->id);
+
+        /* A unit we need to run is gone. Sniff. Let's stop this. */
         manager_add_job(u->manager, JOB_STOP, u, JOB_FAIL, true, NULL, NULL);
 }
 
@@ -1611,10 +1643,18 @@ void unit_notify(Unit *u, UnitActiveState os, UnitActiveState ns, bool reload_su
         manager_recheck_journal(m);
         unit_trigger_notify(u);
 
-        /* Maybe we finished startup and are now ready for being
-         * stopped because unneeded? */
-        if (u->manager->n_reloading <= 0)
+        if (u->manager->n_reloading <= 0) {
+                /* Maybe we finished startup and are now ready for
+                 * being stopped because unneeded? */
                 unit_check_unneeded(u);
+
+                /* Maybe we finished startup, but something we needed
+                 * has vanished? Let's die then. (This happens when
+                 * something BindsTo= to a Type=oneshot unit, as these
+                 * units go directly from starting to inactive,
+                 * without ever entering started.) */
+                unit_check_binds_to(u);
+        }
 
         unit_add_to_dbus_queue(u);
         unit_add_to_gc_queue(u);
@@ -2904,7 +2944,6 @@ static int drop_in_file(Unit *u, UnitSetPropertiesMode mode, const char *name, c
         assert(name);
         assert(_p);
         assert(_q);
-        assert(mode & (UNIT_PERSISTENT|UNIT_RUNTIME));
 
         b = xescape(name, "/.");
         if (!b)
@@ -2923,7 +2962,7 @@ static int drop_in_file(Unit *u, UnitSetPropertiesMode mode, const char *name, c
                         return -ENOENT;
 
                 p = strjoin(c, "/", u->id, ".d", NULL);
-        } else if (mode & UNIT_PERSISTENT)
+        } else if (mode == UNIT_PERSISTENT && !u->transient)
                 p = strjoin("/etc/systemd/system/", u->id, ".d", NULL);
         else
                 p = strjoin("/run/systemd/system/", u->id, ".d", NULL);
@@ -2949,7 +2988,7 @@ int unit_write_drop_in(Unit *u, UnitSetPropertiesMode mode, const char *name, co
         assert(name);
         assert(data);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         r = drop_in_file(u, mode, name, &p, &q);
@@ -2969,7 +3008,7 @@ int unit_write_drop_in_format(Unit *u, UnitSetPropertiesMode mode, const char *n
         assert(name);
         assert(format);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         va_start(ap, format);
@@ -2992,7 +3031,7 @@ int unit_write_drop_in_private(Unit *u, UnitSetPropertiesMode mode, const char *
         if (!UNIT_VTABLE(u)->private_section)
                 return -EINVAL;
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         ndata = strjoin("[", UNIT_VTABLE(u)->private_section, "]\n", data, NULL);
@@ -3011,7 +3050,7 @@ int unit_write_drop_in_private_format(Unit *u, UnitSetPropertiesMode mode, const
         assert(name);
         assert(format);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         va_start(ap, format);
@@ -3030,7 +3069,7 @@ int unit_remove_drop_in(Unit *u, UnitSetPropertiesMode mode, const char *name) {
 
         assert(u);
 
-        if (!(mode & (UNIT_PERSISTENT|UNIT_RUNTIME)))
+        if (!IN_SET(mode, UNIT_PERSISTENT, UNIT_RUNTIME))
                 return 0;
 
         r = drop_in_file(u, mode, name, &p, &q);
@@ -3113,7 +3152,7 @@ int unit_kill_context(
                 } else {
                         wait_for_exit = !main_pid_alien;
 
-                        if (c->send_sighup)
+                        if (c->send_sighup && !sigkill)
                                 kill(main_pid, SIGHUP);
                 }
         }
@@ -3131,7 +3170,7 @@ int unit_kill_context(
                 } else {
                         wait_for_exit = true;
 
-                        if (c->send_sighup)
+                        if (c->send_sighup && !sigkill)
                                 kill(control_pid, SIGHUP);
                 }
         }
@@ -3149,15 +3188,27 @@ int unit_kill_context(
                         if (r != -EAGAIN && r != -ESRCH && r != -ENOENT)
                                 log_warning_unit(u->id, "Failed to kill control group: %s", strerror(-r));
                 } else if (r > 0) {
-                        wait_for_exit = true;
-                        if (c->send_sighup) {
+
+                        /* FIXME: Now, we don't actually wait for any
+                         * of the processes that are neither control
+                         * nor main process. We should wait for them
+                         * of course, but that's hard since the cgroup
+                         * notification logic is so unreliable. It is
+                         * not available at all in containers, and on
+                         * the host it gets confused by
+                         * subgroups. Hence, for now, let's not wait
+                         * for these processes -- but when the kernel
+                         * gets fixed we really should correct
+                         * that. */
+
+                        if (c->send_sighup && !sigkill) {
                                 set_free(pid_set);
 
                                 pid_set = unit_pid_set(main_pid, control_pid);
                                 if (!pid_set)
                                         return -ENOMEM;
 
-                                cg_kill_recursive(SYSTEMD_CGROUP_CONTROLLER, u->cgroup_path, SIGHUP, true, true, false, pid_set);
+                                cg_kill_recursive(SYSTEMD_CGROUP_CONTROLLER, u->cgroup_path, SIGHUP, false, true, false, pid_set);
                         }
                 }
         }

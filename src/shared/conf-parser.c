@@ -320,8 +320,8 @@ int config_parse(const char *unit,
         if (!f) {
                 f = ours = fopen(filename, "re");
                 if (!f) {
-                        log_error("Failed to open configuration file '%s': %m", filename);
-                        return -errno;
+                        log_full(errno == ENOENT ? LOG_DEBUG : LOG_ERR, "Failed to open configuration file '%s': %m", filename);
+                        return errno == ENOENT ? 0 : -errno;
                 }
         }
 
@@ -670,7 +670,7 @@ int config_parse_strv(const char *unit,
         FOREACH_WORD_QUOTED(w, l, rvalue, state) {
                 _cleanup_free_ char *n;
 
-                n = cunescape_length(w, l);
+                n = strndup(w, l);
                 if (!n)
                         return log_oom();
 

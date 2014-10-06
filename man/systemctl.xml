@@ -173,12 +173,27 @@ systemctl start foo
 
       <varlistentry>
         <term><option>--after</option></term>
+
+        <listitem>
+          <para>With <command>list-dependencies</command>, show the
+          units that are ordered before the specified unit. In other
+          words, list the units that are in the <varname>After=</varname>
+          directive of the specified unit, have the specified unit in
+          their <varname>Before=</varname> directive, or are otherwise
+          implicit dependencies of the specified unit.</para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>--before</option></term>
 
         <listitem>
-          <para>Show which units are started after or before
-          with <command>list-dependencies</command>, respectively.
-          </para>
+          <para>With <command>list-dependencies</command>, show the
+          units that are ordered after the specified unit. In other
+          words, list the units that are in the <varname>Before=</varname>
+          directive of the specified unit, have the specified unit in
+          their <varname>After=</varname> directive, or otherwise depend
+          on the specified unit.</para>
         </listitem>
       </varlistentry>
 
@@ -587,8 +602,7 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             file.</para>
 
             <para>This command should not be confused with the
-            <command>daemon-reload</command> or <command>load</command>
-            commands.</para>
+            <command>daemon-reload</command> command.</para>
           </listitem>
 
         </varlistentry>
@@ -657,9 +671,8 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
           <listitem>
             <para>Send a signal to one or more processes of the
             unit. Use <option>--kill-who=</option> to select which
-            process to kill. Use <option>--kill-mode=</option> to select
-            the kill mode and <option>--signal=</option> to select the
-            signal to send.</para>
+            process to kill. Use <option>--signal=</option> to select
+            the signal to send.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -1149,8 +1162,7 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             tree. While the daemon is being reloaded, all sockets systemd
             listens on on behalf of user configuration will stay
             accessible.</para> <para>This command should not be confused
-            with the <command>load</command> or
-            <command>reload</command> commands.</para>
+            with the <command>reload</command> command.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
