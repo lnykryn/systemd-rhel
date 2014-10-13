@@ -1401,6 +1401,36 @@ int exec_spawn(ExecCommand *command,
                         }
                 }
 
+#ifdef HAVE_SELINUX
+                if (apply_permissions) {
+                        if (use_selinux()) {
+                                if (context->selinux_context) {
+                                        err = setexeccon(context->selinux_context);
+                                        if (err < 0 && !context->selinux_context_ignore) {
+                                                r = EXIT_SELINUX_CONTEXT;
+                                                goto fail_child;
+                                        }
+                                }
+
+                                if (selinux_context_net && socket_fd >= 0) {
+                                        _cleanup_free_ char *label = NULL;
+
+                                        err = label_get_child_mls_label(socket_fd, command->path, &label);
+                                        if (err < 0) {
+                                                r = EXIT_SELINUX_CONTEXT;
+                                                goto fail_child;
+                                        }
+
+                                        err = setexeccon(label);
+                                        if (err < 0) {
+                                                r = EXIT_SELINUX_CONTEXT;
+                                                goto fail_child;
+                                        }
+                                }
+                        }
+                }
+#endif
+
                 /* We repeat the fd closing here, to make sure that
                  * nothing is leaked from the PAM modules */
                 err = close_all_fds(fds, n_fds);
@@ -1474,33 +1504,7 @@ int exec_spawn(ExecCommand *command,
                                         goto fail_child;
                                 }
                         }
-#ifdef HAVE_SELINUX
-                        if (use_selinux()) {
-                                if (context->selinux_context) {
-                                        err = setexeccon(context->selinux_context);
-                                        if (err < 0 && !context->selinux_context_ignore) {
-                                                r = EXIT_SELINUX_CONTEXT;
-                                                goto fail_child;
-                                        }
-                                }
 
-                                if (selinux_context_net && socket_fd >= 0) {
-                                        _cleanup_free_ char *label = NULL;
-
-                                        err = label_get_child_mls_label(socket_fd, command->path, &label);
-                                        if (err < 0) {
-                                                r = EXIT_SELINUX_CONTEXT;
-                                                goto fail_child;
-                                        }
-
-                                        err = setexeccon(label);
-                                        if (err < 0) {
-                                                r = EXIT_SELINUX_CONTEXT;
-                                                goto fail_child;
-                                        }
-                                }
-                        }
-#endif
                 }
 
                 our_env = new0(char*, 7);
