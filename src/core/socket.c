@@ -1234,7 +1234,7 @@ static int socket_spawn(Socket *s, ExecCommand *c, pid_t *_pid) {
                        true,
                        true,
                        UNIT(s)->manager->confirm_spawn,
-                       s->selinux_context_from_net,
+                       false,
                        UNIT(s)->manager->cgroup_supported,
                        UNIT(s)->cgroup_path,
                        UNIT(s)->id,

@@ -1867,7 +1867,7 @@ static int service_spawn(
                        apply_chroot,
                        apply_tty_stdin,
                        UNIT(s)->manager->confirm_spawn,
-                       false,
+                       s->socket_fd_selinux_context_net,
                        UNIT(s)->manager->cgroup_supported,
                        path,
                        UNIT(s)->id,
