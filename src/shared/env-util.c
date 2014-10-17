@@ -29,6 +29,13 @@
 #include "env-util.h"
 #include "def.h"
 
+#define log_full_unit(level, unit, ...) log_meta_object(level, __FILE__, __LINE__, __func__, getpid() == 1 ? "UNIT=" : "USER_UNIT=", unit, __VA_ARGS__)
+#define log_debug_unit(unit, ...)       log_full_unit(LOG_DEBUG, unit, __VA_ARGS__)
+#define log_info_unit(unit, ...)        log_full_unit(LOG_INFO, unit, __VA_ARGS__)
+#define log_notice_unit(unit, ...)      log_full_unit(LOG_NOTICE, unit, __VA_ARGS__)
+#define log_warning_unit(unit, ...)     log_full_unit(LOG_WARNING, unit, __VA_ARGS__)
+#define log_error_unit(unit, ...)       log_full_unit(LOG_ERR, unit, __VA_ARGS__)
+
 #define VALID_CHARS_ENV_NAME                    \
         DIGITS LETTERS                          \
         "_"
@@ -375,7 +382,7 @@ char *strv_env_get(char **l, const char *name) {
         return strv_env_get_n(l, name, strlen(name));
 }
 
-char **strv_env_clean_log(char **e, const char *message) {
+char **strv_env_clean_log(char **e, const char *unit_id, const char *message) {
         char **p, **q;
         int k = 0;
 
@@ -385,7 +392,7 @@ char **strv_env_clean_log(char **e, const char *message) {
 
                 if (!env_assignment_is_valid(*p)) {
                         if (message)
-                                log_error("Ignoring invalid environment '%s': %s", *p, message);
+                                log_error_unit(unit_id, "Ignoring invalid environment '%s': %s", *p, message);
                         free(*p);
                         continue;
                 }
@@ -412,5 +419,5 @@ char **strv_env_clean_log(char **e, const char *message) {
 }
 
 char **strv_env_clean(char **e) {
-        return strv_env_clean_log(e, NULL);
+        return strv_env_clean_log(e, NULL, NULL);
 }

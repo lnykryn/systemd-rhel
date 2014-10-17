@@ -200,7 +200,7 @@ void exec_context_tmp_dirs_done(ExecContext *c);
 void exec_context_dump(ExecContext *c, FILE* f, const char *prefix);
 void exec_context_tty_reset(const ExecContext *context);
 
-int exec_context_load_environment(const ExecContext *c, char ***l);
+int exec_context_load_environment(const ExecContext *c, const char *unit_id, char ***l);
 
 bool exec_context_may_touch_console(ExecContext *c);
 void exec_context_serialize(const ExecContext *c, Unit *u, FILE *f);
