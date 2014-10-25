@@ -36,7 +36,7 @@
  *   o<index>                              -- on-board device index number
  *   s<slot>[f<function>][d<dev_id>]       -- hotplug slot index number
  *   x<MAC>                                -- MAC address
- *   [P<domain>]p<bus>s<slot>[f<function>][d<dev_id>]
+ *   [P<domain>]p<bus>s<slot>[f<function>][d<dev_id>/<dev_port>]
  *                                         -- PCI geographical location
  *   [P<domain>]p<bus>s<slot>[f<function>][u<port>][..][c<config>][i<interface>]
  *                                         -- USB port number chain
@@ -185,8 +185,14 @@ static int dev_pci_slot(struct udev_device *dev, struct netnames *names) {
 
         /* kernel provided multi-device index */
         attr = udev_device_get_sysattr_value(dev, "dev_id");
-        if (attr)
+        if (attr) {
                 dev_id = strtol(attr, NULL, 16);
+                if (dev_id == 0) {
+                        attr = udev_device_get_sysattr_value(dev, "dev_port");
+                        if (attr)
+                                dev_id = strtol(attr, NULL, 16);
+                }
+        }
 
         /* compose a name based on the raw kernel's PCI bus, slot numbers */
         s = names->pci_path;
