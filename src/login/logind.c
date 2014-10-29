@@ -618,14 +618,14 @@ static void manager_dispatch_other(Manager *m, int fd) {
         if (s) {
                 assert(s->fifo_fd == fd);
                 session_remove_fifo(s);
-                session_stop(s);
+                session_stop(s, false);
                 return;
         }
 
         s = hashmap_get(m->timer_fds, INT_TO_PTR(fd + 1));
         if (s) {
                 assert(s->timer_fd == fd);
-                session_stop(s);
+                session_stop(s, false);
                 return;
         }
 
@@ -942,7 +942,7 @@ void manager_gc(Manager *m, bool drop_not_started) {
                 seat->in_gc_queue = false;
 
                 if (seat_check_gc(seat, drop_not_started) == 0) {
-                        seat_stop(seat);
+                        seat_stop(seat, false);
                         seat_free(seat);
                 }
         }
@@ -954,7 +954,7 @@ void manager_gc(Manager *m, bool drop_not_started) {
                 /* First, if we are not closing yet, initiate stopping */
                 if (!session_check_gc(session, drop_not_started) &&
                     session_get_state(session) != SESSION_CLOSING)
-                        session_stop(session);
+                        session_stop(session, false);
 
                 if (!session_check_gc(session, drop_not_started)) {
                         session_finalize(session);
@@ -968,7 +968,7 @@ void manager_gc(Manager *m, bool drop_not_started) {
 
                 if (!user_check_gc(user, drop_not_started) &&
                     user_get_state(user) != USER_CLOSING)
-                        user_stop(user);
+                        user_stop(user, false);
 
                 if (!user_check_gc(user, drop_not_started)) {
                         user_finalize(user);

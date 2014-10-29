@@ -261,7 +261,7 @@ static DBusHandlerResult seat_message_dispatch(
 
         if (dbus_message_is_method_call(message, "org.freedesktop.login1.Seat", "Terminate")) {
 
-                r = seat_stop_sessions(s);
+                r = seat_stop_sessions(s, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 

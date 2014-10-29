@@ -242,7 +242,7 @@ static DBusHandlerResult user_message_dispatch(
 
         if (dbus_message_is_method_call(message, "org.freedesktop.login1.User", "Terminate")) {
 
-                r = user_stop(u);
+                r = user_stop(u, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 

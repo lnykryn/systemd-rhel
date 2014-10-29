@@ -116,7 +116,7 @@
         "  <method name=\"KillSession\">\n"                             \
         "   <arg name=\"id\" type=\"s\" direction=\"in\"/>\n"           \
         "   <arg name=\"who\" type=\"s\" direction=\"in\"/>\n"          \
-        "   <arg name=\"signal\" type=\"s\" direction=\"in\"/>\n"       \
+        "   <arg name=\"signal\" type=\"i\" direction=\"in\"/>\n"       \
         "  </method>\n"                                                 \
         "  <method name=\"KillUser\">\n"                                \
         "   <arg name=\"uid\" type=\"u\" direction=\"in\"/>\n"          \
@@ -1927,7 +1927,7 @@ static DBusHandlerResult manager_message_handler(
                 if (!session)
                         return bus_send_error_reply(connection, message, &error, -ENOENT);
 
-                r = session_stop(session);
+                r = session_stop(session, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 
@@ -1950,7 +1950,7 @@ static DBusHandlerResult manager_message_handler(
                 if (!user)
                         return bus_send_error_reply(connection, message, &error, -ENOENT);
 
-                r = user_stop(user);
+                r = user_stop(user, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 
@@ -1973,7 +1973,7 @@ static DBusHandlerResult manager_message_handler(
                 if (!seat)
                         return bus_send_error_reply(connection, message, &error, -ENOENT);
 
-                r = seat_stop_sessions(seat);
+                r = seat_stop_sessions(seat, true);
                 if (r < 0)
                         return bus_send_error_reply(connection, message, NULL, r);
 
@@ -2814,7 +2814,7 @@ int manager_kill_unit(Manager *manager, const char *unit, KillWho who, int signo
         assert(manager);
         assert(unit);
 
-        w = who == KILL_LEADER ? "process" : "cgroup";
+        w = who == KILL_LEADER ? "main" : "all";
         assert_cc(sizeof(signo) == sizeof(int32_t));
 
         r = bus_method_call_with_reply(
@@ -2830,7 +2830,7 @@ int manager_kill_unit(Manager *manager, const char *unit, KillWho who, int signo
                         DBUS_TYPE_INT32, &signo,
                         DBUS_TYPE_INVALID);
         if (r < 0) {
-                log_error("Failed to stop unit %s: %s", unit, bus_error(error, r));
+                log_error("Failed to kill unit %s: %s", unit, bus_error(error, r));
                 return r;
         }
 
