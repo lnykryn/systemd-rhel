@@ -190,7 +190,7 @@ static int dev_pci_slot(struct udev_device *dev, struct netnames *names) {
                 if (dev_id == 0) {
                         attr = udev_device_get_sysattr_value(dev, "dev_port");
                         if (attr)
-                                dev_id = strtol(attr, NULL, 16);
+                                dev_id = strtol(attr, NULL, 10);
                 }
         }
 
