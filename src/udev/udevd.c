@@ -889,7 +889,7 @@ static void kernel_cmdline_options(struct udev *udev)
                 } else if (startswith(opt, "udev.exec-delay=")) {
                         exec_delay = strtoul(opt + 16, NULL, 0);
                 } else if (startswith(opt, "udev.event-timeout=")) {
-                        event_timeout = strtoul(opt + 16, NULL, 0);
+                        event_timeout = strtoul(opt + 19, NULL, 0);
                 }
 
                 free(s);
