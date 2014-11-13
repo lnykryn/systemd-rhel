@@ -1042,6 +1042,7 @@ int exec_spawn(ExecCommand *command,
                bool selinux_context_net,
                CGroupControllerMask cgroup_supported,
                const char *cgroup_path,
+               bool cgroup_delegate,
                const char *unit_id,
                int idle_pipe[4],
                pid_t *ret) {
@@ -1306,8 +1307,10 @@ int exec_spawn(ExecCommand *command,
                         }
                 }
 
-#ifdef HAVE_PAM
-                if (cgroup_path && context->user && context->pam_name) {
+                /* If delegation is enabled we'll pass ownership of the cgroup
+                 * (but only in systemd's own controller hierarchy!) to the
+                 * user of the new process. */
+               if (cgroup_path && context->user && cgroup_delegate) {
                         err = cg_set_task_access(SYSTEMD_CGROUP_CONTROLLER, cgroup_path, 0644, uid, gid);
                         if (err < 0) {
                                 r = EXIT_CGROUP;
@@ -1321,7 +1324,6 @@ int exec_spawn(ExecCommand *command,
                                 goto fail_child;
                         }
                 }
-#endif
 
                 if (apply_permissions) {
                         err = enforce_groups(context, username, gid);
@@ -2114,6 +2116,21 @@ void exec_context_dump(ExecContext *c, FILE* f, const char *prefix) {
                         "%sSELinuxContext: %s%s\n",
                         prefix, c->selinux_context_ignore ? "-" : "", c->selinux_context);
 
+}
+
+bool exec_context_maintains_privileges(ExecContext *c) {
+        assert(c);
+
+        /* Returns true if the process forked off would run under
+         * an unchanged UID or as root. */
+
+        if (!c->user)
+                return true;
+
+        if (streq(c->user, "root") || streq(c->user, "0"))
+                return true;
+
+        return false;
 }
 
 void exec_status_start(ExecStatus *s, pid_t pid) {

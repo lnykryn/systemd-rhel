@@ -592,6 +592,7 @@ static int swap_spawn(Swap *s, ExecCommand *c, pid_t *_pid) {
                        false,
                        UNIT(s)->manager->cgroup_supported,
                        UNIT(s)->cgroup_path,
+                       s->cgroup_context.delegate,
                        UNIT(s)->id,
                        NULL,
                        &pid);
