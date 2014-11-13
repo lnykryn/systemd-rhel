@@ -94,14 +94,16 @@ void cgroup_context_dump(CGroupContext *c, FILE* f, const char *prefix) {
                 "%sCPUShares=%lu\n"
                 "%sBlockIOWeight=%lu\n"
                 "%sMemoryLimit=%" PRIu64 "\n"
-                "%sDevicePolicy=%s\n",
+                "%sDevicePolicy=%s\n"
+                "%sDelegate=%s\n",
                 prefix, yes_no(c->cpu_accounting),
                 prefix, yes_no(c->blockio_accounting),
                 prefix, yes_no(c->memory_accounting),
                 prefix, c->cpu_shares,
                 prefix, c->blockio_weight,
                 prefix, c->memory_limit,
-                prefix, cgroup_device_policy_to_string(c->device_policy));
+                prefix, cgroup_device_policy_to_string(c->device_policy),
+                prefix, yes_no(c->delegate));
 
         LIST_FOREACH(device_allow, a, c->device_allow)
                 fprintf(f,
@@ -341,6 +343,19 @@ static CGroupControllerMask unit_get_cgroup_mask(Unit *u) {
         c = unit_get_cgroup_context(u);
         if (!c)
                 return 0;
+
+        /* If delegation is turned on, then turn on all cgroups,
+         * unless the process we fork into it is known to drop
+         * privileges anyway, and shouldn't get access to the
+         * controllers anyway. */
+
+        if (c->delegate) {
+                ExecContext *e;
+
+                e = unit_get_exec_context(u);
+                if (!e || exec_context_maintains_privileges(e))
+                        return _CGROUP_CONTROLLER_MASK_ALL;
+        }
 
         return cgroup_context_get_mask(c);
 }

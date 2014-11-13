@@ -739,9 +739,11 @@ int manager_start_scope(
         DBusMessageIter iter, sub, sub2, sub3, sub4;
         const char *timeout_stop_property = "TimeoutStopUSec";
         const char *pids_property = "PIDs";
+        const char *delegate_property = "Delegate";
         uint64_t timeout = 500 * USEC_PER_MSEC;
         const char *fail = "fail";
         uint32_t u;
+        dbus_bool_t b = 1;
         int r;
 
         assert(manager);
@@ -810,6 +812,14 @@ int manager_start_scope(
             !dbus_message_iter_open_container(&sub3, DBUS_TYPE_ARRAY, "u", &sub4) ||
             !dbus_message_iter_append_basic(&sub4, DBUS_TYPE_UINT32, &u) ||
             !dbus_message_iter_close_container(&sub3, &sub4) ||
+            !dbus_message_iter_close_container(&sub2, &sub3) ||
+            !dbus_message_iter_close_container(&sub, &sub2))
+                return log_oom();
+
+        if (!dbus_message_iter_open_container(&sub, DBUS_TYPE_STRUCT, NULL, &sub2) ||
+            !dbus_message_iter_append_basic(&sub2, DBUS_TYPE_STRING, &delegate_property) ||
+            !dbus_message_iter_open_container(&sub2, DBUS_TYPE_VARIANT, "b", &sub3) ||
+            !dbus_message_iter_append_basic(&sub3, DBUS_TYPE_BOOLEAN, &b) ||
             !dbus_message_iter_close_container(&sub2, &sub3) ||
             !dbus_message_iter_close_container(&sub, &sub2))
                 return log_oom();

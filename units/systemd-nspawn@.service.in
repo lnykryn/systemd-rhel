@@ -12,6 +12,7 @@ Documentation=man:systemd-nspawn(1)
 [Service]
 ExecStart=@bindir@/systemd-nspawn -bjD /var/lib/container/%i
 Type=notify
+Delegate=yes
 
 [Install]
 WantedBy=multi-user.target

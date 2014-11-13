@@ -1229,6 +1229,7 @@ static int socket_spawn(Socket *s, ExecCommand *c, pid_t *_pid) {
                        UNIT(s)->manager->confirm_spawn,
                        UNIT(s)->manager->cgroup_supported,
                        UNIT(s)->cgroup_path,
+                       s->cgroup_context.delegate,
                        UNIT(s)->id,
                        NULL,
                        &pid);

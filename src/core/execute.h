@@ -173,6 +173,7 @@ int exec_spawn(ExecCommand *command,
                bool confirm_spawn,
                CGroupControllerMask cgroup_mask,
                const char *cgroup_path,
+               bool cgroup_delegate,
                const char *unit_id,
                int pipe_fd[2],
                pid_t *ret);
@@ -199,6 +200,7 @@ void exec_context_tty_reset(const ExecContext *context);
 int exec_context_load_environment(const ExecContext *c, char ***l);
 
 bool exec_context_may_touch_console(ExecContext *c);
+bool exec_context_maintains_privileges(ExecContext *c);
 void exec_context_serialize(const ExecContext *c, Unit *u, FILE *f);
 
 void exec_status_start(ExecStatus *s, pid_t pid);

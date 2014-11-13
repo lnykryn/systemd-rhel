@@ -124,6 +124,7 @@ static int bus_cgroup_append_device_allow(DBusMessageIter *i, const char *proper
 }
 
 const BusProperty bus_cgroup_context_properties[] = {
+        { "Delegate",                bus_property_append_bool,            "b",     offsetof(CGroupContext, delegate)           },
         { "CPUAccounting",           bus_property_append_bool,            "b",     offsetof(CGroupContext, cpu_accounting)     },
         { "CPUShares",               bus_property_append_ul,              "t",     offsetof(CGroupContext, cpu_shares)         },
         { "BlockIOAccounting",       bus_property_append_bool,            "b",     offsetof(CGroupContext, blockio_accounting) },
@@ -137,6 +138,38 @@ const BusProperty bus_cgroup_context_properties[] = {
         { "DeviceAllow",             bus_cgroup_append_device_allow,      "a(ss)", 0                                           },
         {}
 };
+
+static int bus_cgroup_set_transient_property(
+                Unit *u,
+                CGroupContext *c,
+                const char *name,
+                DBusMessageIter *i,
+                UnitSetPropertiesMode mode,
+                DBusError *error) {
+
+        assert(u);
+        assert(c);
+        assert(name);
+        assert(i);
+
+        if (streq(name, "Delegate")) {
+
+                if (dbus_message_iter_get_arg_type(i) != DBUS_TYPE_BOOLEAN)
+                        return -EINVAL;
+
+                if (mode != UNIT_CHECK) {
+                        dbus_bool_t b;
+
+                        dbus_message_iter_get_basic(i, &b);
+                        c->delegate = b;
+                        unit_write_drop_in_private(u, mode, name, b ? "Delegate=yes" : "Delegate=no");
+                }
+
+                return 1;
+        }
+
+        return 0;
+}
 
 int bus_cgroup_set_property(
                 Unit *u,
@@ -548,6 +581,13 @@ int bus_cgroup_set_property(
                 }
 
                 return 1;
+        }
+
+        if (u->transient && u->load_state == UNIT_STUB) {
+                int r;
+                r = bus_cgroup_set_transient_property(u, c, name, i, mode, error);
+                if (r != 0)
+                        return r;
         }
 
         return 0;

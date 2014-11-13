@@ -793,6 +793,7 @@ static int mount_spawn(Mount *m, ExecCommand *c, pid_t *_pid) {
                        UNIT(m)->manager->confirm_spawn,
                        UNIT(m)->manager->cgroup_supported,
                        UNIT(m)->cgroup_path,
+                       m->cgroup_context.delegate,
                        UNIT(m)->id,
                        NULL,
                        &pid);
