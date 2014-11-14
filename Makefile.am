@@ -535,7 +535,6 @@ nodist_systemunit_DATA = \
 	units/systemd-sysctl.service \
 	units/emergency.service \
 	units/rescue.service \
-	units/user@.service \
 	units/systemd-suspend.service \
 	units/systemd-halt.service \
 	units/systemd-poweroff.service \
@@ -597,7 +596,6 @@ EXTRA_DIST += \
 	units/systemd-fsck@.service.in \
 	units/systemd-fsck-root.service.in \
 	units/systemd-machine-id-commit.service.in \
-	units/user@.service.m4.in \
 	units/debug-shell.service.in \
 	units/systemd-suspend.service.in \
 	units/quotaon.service.in \
