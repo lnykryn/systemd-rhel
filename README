@@ -135,7 +135,8 @@ REQUIREMENTS:
         During runtime, you need the following additional
         dependencies:
 
-        util-linux >= v2.25 required
+        util-linux >= v2.19 (requires fsck -l, agetty -s),
+                      v2.21 required for tests in test/
         dbus >= 1.4.0 (strictly speaking optional, but recommended)
         dracut (optional)
         PolicyKit (optional)
