@@ -6,17 +6,21 @@
 #  (at your option) any later version.
 
 [Unit]
-Description=Load/Save RF Kill Switch Status of %I
-Documentation=man:systemd-rfkill@.service(8)
+Description=Replay Read-Ahead Data
+Documentation=man:systemd-readahead-replay.service(8)
 DefaultDependencies=no
-BindsTo=sys-subsystem-rfkill-devices-%i.device
-RequiresMountsFor=/var/lib/systemd/rfkill
 Conflicts=shutdown.target
-After=systemd-readahead-collect.service systemd-readahead-replay.service systemd-remount-fs.service
 Before=sysinit.target shutdown.target
+ConditionPathExists=!/run/systemd/readahead/noreplay
+ConditionPathExists=/.readahead
+ConditionVirtualization=no
 
 [Service]
-Type=oneshot
+Type=notify
+ExecStart=@rootlibexecdir@/systemd-readahead replay
 RemainAfterExit=yes
-ExecStart=@rootlibexecdir@/systemd-rfkill load %I
-ExecStop=@rootlibexecdir@/systemd-rfkill save %I
+StandardOutput=null
+OOMScoreAdjust=1000
+
+[Install]
+WantedBy=default.target
