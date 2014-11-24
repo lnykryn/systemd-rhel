@@ -997,6 +997,7 @@ libsystemd_core_la_CFLAGS = \
 	$(PAM_CFLAGS) \
 	$(AUDIT_CFLAGS) \
 	$(KMOD_CFLAGS) \
+	$(MOUNT_CFLAGS) \
 	-pthread
 
 libsystemd_core_la_LIBADD = \
@@ -1013,7 +1014,8 @@ libsystemd_core_la_LIBADD = \
 	$(PAM_LIBS) \
 	$(AUDIT_LIBS) \
 	$(CAP_LIBS) \
-	$(KMOD_LIBS)
+	$(KMOD_LIBS) \
+	$(MOUNT_LIBS)
 
 src/core/load-fragment-gperf-nulstr.c: src/core/load-fragment-gperf.gperf
 	$(AM_V_at)$(MKDIR_P) $(dir $@)

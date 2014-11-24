@@ -292,6 +292,15 @@ fi
 AM_CONDITIONAL(HAVE_BLKID, [test "$have_blkid" = "yes"])
 
 # ------------------------------------------------------------------------------
+have_libmount=no
+PKG_CHECK_MODULES(MOUNT, [ mount >= 2.20 ],
+        [AC_DEFINE(HAVE_LIBMOUNT, 1, [Define if libmount is available]) have_libmount=yes], have_libmount=no)
+if test "x$have_libmount" = xno; then
+        AC_MSG_ERROR([*** libmount support required but libraries not found])
+fi
+AM_CONDITIONAL(HAVE_LIBMOUNT, [test "$have_libmount" = "yes"])
+
+# ------------------------------------------------------------------------------
 have_ima=yes
 AC_ARG_ENABLE([ima], AS_HELP_STRING([--disable-ima],[Disable optional IMA support]),
                 [case "${enableval}" in
@@ -1046,6 +1055,7 @@ AC_MSG_RESULT([
         efi:                     ${have_efi}
         kmod:                    ${have_kmod}
         blkid:                   ${have_blkid}
+        libmount:                ${have_libmount}
         nss-myhostname:          ${have_myhostname}
         gudev:                   ${enable_gudev}
         gintrospection:          ${enable_introspection}
