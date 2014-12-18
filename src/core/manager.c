@@ -1732,8 +1732,9 @@ static int process_event(Manager *m, struct epoll_event *ev) {
         }
 
         case WATCH_MOUNT:
+        case WATCH_MOUNT_UTAB:
                 /* Some mount table change, intended for the mount subsystem */
-                mount_fd_event(m, ev->events);
+                mount_fd_event(m, w, ev->events);
                 break;
 
         case WATCH_SWAP:

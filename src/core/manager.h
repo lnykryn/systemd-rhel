@@ -58,6 +58,7 @@ enum WatchType {
         WATCH_UNIT_TIMER,
         WATCH_JOB_TIMER,
         WATCH_MOUNT,
+        WATCH_MOUNT_UTAB,
         WATCH_SWAP,
         WATCH_UDEV,
         WATCH_DBUS_WATCH,
@@ -178,6 +179,7 @@ struct Manager {
         /* Data specific to the mount subsystem */
         FILE *proc_self_mountinfo;
         Watch mount_watch;
+        Watch mount_watch_utab;
 
         /* Data specific to the swap filesystem */
         FILE *proc_swaps;
