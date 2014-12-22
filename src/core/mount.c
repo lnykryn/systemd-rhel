@@ -24,6 +24,8 @@
 #include <mntent.h>
 #include <sys/epoll.h>
 #include <signal.h>
+#include <libmount.h>
+#include <sys/inotify.h>
 
 #include "manager.h"
 #include "unit.h"
@@ -73,16 +75,20 @@ static char* mount_test_option(const char *haystack, const char *needle) {
         return hasmntopt(&me, needle);
 }
 
-static bool mount_is_network(MountParameters *p) {
-        assert(p);
-
-        if (mount_test_option(p->options, "_netdev"))
+static bool mount_needs_network(const char *options, const char *fstype) {
+        if (mount_test_option(options, "_netdev"))
                 return true;
 
-        if (p->fstype && fstype_is_network(p->fstype))
+        if (fstype && fstype_is_network(fstype))
                 return true;
 
         return false;
+}
+
+static bool mount_is_network(MountParameters *p) {
+        assert(p);
+
+        return mount_needs_network(p->options, p->fstype);
 }
 
 static bool mount_is_bind(MountParameters *p) {
@@ -1445,9 +1451,6 @@ static int mount_add_one(
 
         u = manager_get_unit(m, e);
         if (!u) {
-                const char* const target =
-                        fstype_is_network(fstype) ? SPECIAL_REMOTE_FS_TARGET : SPECIAL_LOCAL_FS_TARGET;
-
                 delete = true;
 
                 u = unit_new(m, sizeof(Mount));
@@ -1474,14 +1477,20 @@ static int mount_add_one(
                         goto fail;
                 }
 
-                r = unit_add_dependency_by_name(u, UNIT_BEFORE, target, NULL, true);
-                if (r < 0)
-                        goto fail;
 
-                if (should_umount(MOUNT(u))) {
-                        r = unit_add_dependency_by_name(u, UNIT_CONFLICTS, SPECIAL_UMOUNT_TARGET, NULL, true);
+                if (m->running_as == SYSTEMD_SYSTEM) {
+                        const char* target;
+
+                        target = mount_needs_network(options, fstype) ?  SPECIAL_REMOTE_FS_TARGET : SPECIAL_LOCAL_FS_TARGET;
+                        r = unit_add_dependency_by_name(u, UNIT_BEFORE, target, NULL, true);
                         if (r < 0)
                                 goto fail;
+
+                        if (should_umount(MOUNT(u))) {
+                                r = unit_add_dependency_by_name(u, UNIT_CONFLICTS, SPECIAL_UMOUNT_TARGET, NULL, true);
+                                if (r < 0)
+                                        goto fail;
+                        }
                 }
 
                 unit_add_to_load_queue(u);
@@ -1495,6 +1504,19 @@ static int mount_add_one(
                         if (!MOUNT(u)->where) {
                                 r = -ENOMEM;
                                 goto fail;
+                        }
+                }
+
+                if (m->running_as == SYSTEMD_SYSTEM) {
+                        const char* target;
+
+                        target = mount_needs_network(options, fstype) ?  SPECIAL_REMOTE_FS_TARGET : NULL;
+                        /* _netdev option may have shown up late, or on a
+                         * remount. Add remote-fs dependencies, even though
+                         * local-fs ones may already be there */
+                        if (target) {
+                                unit_add_dependency_by_name(u, UNIT_BEFORE, target, NULL, true);
+                                load_extras = true;
                         }
                 }
 
@@ -1564,55 +1586,47 @@ fail:
         return r;
 }
 
+static inline void mnt_free_table_p(struct libmnt_table **tb) {
+        mnt_free_table(*tb);
+}
+
+static inline void mnt_free_iter_p(struct libmnt_iter **itr) {
+        mnt_free_iter(*itr);
+}
+
 static int mount_load_proc_self_mountinfo(Manager *m, bool set_flags) {
+        _cleanup_(mnt_free_table_p) struct libmnt_table *tb = NULL;
+        _cleanup_(mnt_free_iter_p) struct libmnt_iter *itr = NULL;
+        struct libmnt_fs *fs;
         int r = 0;
-        unsigned i;
 
         assert(m);
 
-        rewind(m->proc_self_mountinfo);
+        tb = mnt_new_table();
+        itr = mnt_new_iter(MNT_ITER_FORWARD);
+        if (!tb || !itr)
+                return log_oom();
 
-        for (i = 1;; i++) {
-                _cleanup_free_ char *device = NULL, *path = NULL, *options = NULL, *options2 = NULL, *fstype = NULL, *d = NULL, *p = NULL, *o = NULL;
+        mnt_table_parse_mtab(tb, NULL);
+        if (r)
+                return r;
+
+        while (mnt_table_next_fs(tb, itr, &fs) == 0) {
+                const char *device, *path, *options, *fstype;
+                _cleanup_free_ const char *d = NULL, *p = NULL;
                 int k;
 
-                k = fscanf(m->proc_self_mountinfo,
-                           "%*s "       /* (1) mount id */
-                           "%*s "       /* (2) parent id */
-                           "%*s "       /* (3) major:minor */
-                           "%*s "       /* (4) root */
-                           "%ms "       /* (5) mount point */
-                           "%ms"        /* (6) mount options */
-                           "%*[^-]"     /* (7) optional fields */
-                           "- "         /* (8) separator */
-                           "%ms "       /* (9) file system type */
-                           "%ms"        /* (10) mount source */
-                           "%ms"        /* (11) mount options 2 */
-                           "%*[^\n]",   /* some rubbish at the end */
-                           &path,
-                           &options,
-                           &fstype,
-                           &device,
-                           &options2);
-
-                if (k == EOF)
-                        break;
-
-                if (k != 5) {
-                        log_warning("Failed to parse /proc/self/mountinfo:%u.", i);
-                        continue;
-                }
-
-                o = strjoin(options, ",", options2, NULL);
-                if (!o)
-                        return log_oom();
+                device = mnt_fs_get_source(fs);
+                path = mnt_fs_get_target(fs);
+                options = mnt_fs_get_options(fs);
+                fstype = mnt_fs_get_fstype(fs);
 
                 d = cunescape(device);
                 p = cunescape(path);
                 if (!d || !p)
                         return log_oom();
 
-                k = mount_add_one(m, d, p, o, fstype, 0, set_flags);
+                k = mount_add_one(m, d, p, options, fstype, 0, set_flags);
                 if (k < 0)
                         r = k;
         }
@@ -1627,11 +1641,18 @@ static void mount_shutdown(Manager *m) {
                 fclose(m->proc_self_mountinfo);
                 m->proc_self_mountinfo = NULL;
         }
+
+        if (m->mount_watch_utab.fd) {
+                close_nointr(m->mount_watch_utab.fd);
+                m->mount_watch_utab.fd=0;
+        }
 }
 
 static int mount_enumerate(Manager *m) {
         int r;
         assert(m);
+
+        mnt_init_debug(0);
 
         if (!m->proc_self_mountinfo) {
                 struct epoll_event ev = {
@@ -1650,6 +1671,35 @@ static int mount_enumerate(Manager *m) {
                         return -errno;
         }
 
+        if (!m->mount_watch_utab.fd) {
+
+                struct epoll_event ev = {
+                        .events = EPOLLIN,
+                        .data.ptr = &m->mount_watch_utab,
+                };
+
+                m->mount_watch_utab.fd = inotify_init1(IN_NONBLOCK|IN_CLOEXEC);
+                if (m->mount_watch_utab.fd < 0) {
+                        r = -errno;
+                        goto fail;
+                }
+
+                (void) mkdir_p_label("/run/mount", 0755);
+
+                r = inotify_add_watch(m->mount_watch_utab.fd, "/run/mount", IN_MOVED_TO);
+                if (r < 0) {
+                        r = -errno;
+                        goto fail;
+                }
+
+                m->mount_watch_utab.type = WATCH_MOUNT_UTAB;
+
+                if (epoll_ctl(m->epoll_fd, EPOLL_CTL_ADD, m->mount_watch_utab.fd, &ev) < 0) {
+                        r = -errno;
+                        goto fail;
+                }
+        }
+
         r = mount_load_proc_self_mountinfo(m, false);
         if (r < 0)
                 goto fail;
@@ -1661,16 +1711,54 @@ fail:
         return r;
 }
 
-void mount_fd_event(Manager *m, int events) {
+void mount_fd_event(Manager *m, Watch *w, int events) {
         Unit *u;
         int r;
 
         assert(m);
-        assert(events & EPOLLPRI);
+        assert(w);
+        assert(events & (EPOLLPRI|EPOLLIN));
 
         /* The manager calls this for every fd event happening on the
          * /proc/self/mountinfo file, which informs us about mounting
-         * table changes */
+         * table changes
+         * This may also be called for /run/mount events */
+
+        if (w->type == WATCH_MOUNT_UTAB) {
+                bool rescan = false;
+
+                /* FIXME: We *really* need to replace this with
+                 * libmount's own API for this, we should not hardcode
+                 * internal behaviour of libmount here. */
+
+                for (;;) {
+                        uint8_t buffer[INOTIFY_EVENT_MAX] _alignas_(struct inotify_event);
+                        struct inotify_event *e;
+                        ssize_t l;
+
+                        l = read(w->fd, buffer, sizeof(buffer));
+                        if (l < 0) {
+                                if (errno == EAGAIN || errno == EINTR)
+                                        break;
+
+                                log_error("Failed to read utab inotify: %s", strerror(errno));
+                                break;
+                        }
+
+                        FOREACH_INOTIFY_EVENT(e, buffer, l) {
+                                /* Only care about changes to utab,
+                                 * but we have to monitor the
+                                 * directory to reliably get
+                                 * notifications about when utab is
+                                 * replaced using rename(2) */
+                                if ((e->mask & IN_Q_OVERFLOW) || streq(e->name, "utab"))
+                                        rescan = true;
+                        }
+                }
+
+                if (!rescan)
+                        return;
+        }
 
         r = mount_load_proc_self_mountinfo(m, true);
         if (r < 0) {

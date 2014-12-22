@@ -113,7 +113,7 @@ struct Mount {
 
 extern const UnitVTable mount_vtable;
 
-void mount_fd_event(Manager *m, int events);
+void mount_fd_event(Manager *m, Watch *w, int events);
 
 const char* mount_state_to_string(MountState i) _const_;
 MountState mount_state_from_string(const char *s) _pure_;
