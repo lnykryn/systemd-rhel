@@ -1603,7 +1603,7 @@ static DBusHandlerResult bus_manager_message_handler(DBusConnection *connection,
                 STRV_FOREACH(i, l) {
                         Unit *u;
 
-                        r = manager_load_unit(m, *i, NULL, NULL, &u);
+                        r = path_is_absolute(*i) ? manager_load_unit(m, NULL, *i, NULL, &u) : manager_load_unit(m, *i, NULL, NULL, &u);
                         if (r < 0) {
                                 dbus_set_error(&error, BUS_ERROR_NO_SUCH_UNIT, "Unit %s does not exist.", *i);
                                 return bus_send_error_reply(connection, message, &error, -ENOENT);
@@ -1681,7 +1681,7 @@ static DBusHandlerResult bus_manager_message_handler(DBusConnection *connection,
                 STRV_FOREACH(i, l) {
                         Unit *u;
 
-                        r = manager_load_unit(m, *i, NULL, NULL, &u);
+                        r = path_is_absolute(*i) ? manager_load_unit(m, NULL, *i, NULL, &u) : manager_load_unit(m, *i, NULL, NULL, &u);
                         if (r < 0) {
                                 dbus_set_error(&error, BUS_ERROR_NO_SUCH_UNIT, "Unit %s does not exist.", *i);
                                 return bus_send_error_reply(connection, message, &error, -ENOENT);
