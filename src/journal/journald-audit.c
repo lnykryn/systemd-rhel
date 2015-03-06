@@ -529,8 +529,10 @@ int server_open_audit(Server *s) {
                 }
 
                 r = bind(s->audit_fd, &sa.sa, sizeof(sa.nl));
-                if (r < 0)
-                        return log_error_errno(errno, "Failed to join audit multicast group: %m");
+                if (r < 0) {
+                        log_warning_errno(errno, "Failed to join audit multicast group, ignoring: %m");
+                        return 0;
+                }
         } else
                 fd_nonblock(s->audit_fd, 1);
 
