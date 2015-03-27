@@ -2046,7 +2046,7 @@ UnitFileState unit_file_lookup_state(
         _cleanup_(install_context_done) InstallContext c = {};
         InstallInfo *i;
         UnitFileState state;
-        int r;
+        int r = 0;
 
         assert(paths);
         assert(name);
