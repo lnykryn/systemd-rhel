@@ -1512,6 +1512,24 @@ static void test_sparse_write(void) {
         test_sparse_write_one(fd, test_e, sizeof(test_e));
 }
 
+static void test_shell_maybe_quote_one(const char *s, const char *expected) {
+        _cleanup_free_ char *r;
+
+        assert_se(r = shell_maybe_quote(s));
+        assert_se(streq(r, expected));
+}
+
+static void test_shell_maybe_quote(void) {
+
+        test_shell_maybe_quote_one("", "");
+        test_shell_maybe_quote_one("\\", "\"\\\\\"");
+        test_shell_maybe_quote_one("\"", "\"\\\"\"");
+        test_shell_maybe_quote_one("foobar", "foobar");
+        test_shell_maybe_quote_one("foo bar", "\"foo bar\"");
+        test_shell_maybe_quote_one("foo \"bar\" waldo", "\"foo \\\"bar\\\" waldo\"");
+        test_shell_maybe_quote_one("foo$bar", "\"foo\\$bar\"");
+}
+
 int main(int argc, char *argv[]) {
         log_parse_environment();
         log_open();
@@ -1589,6 +1607,7 @@ int main(int argc, char *argv[]) {
         test_same_fd();
         test_uid_ptr();
         test_sparse_write();
+        test_shell_maybe_quote();
 
         return 0;
 }
