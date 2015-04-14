@@ -3570,7 +3570,8 @@ dist_udevrules_DATA += \
 	rules/80-net-setup-link.rules \
 	rules/95-udev-late.rules \
 	rules/40-redhat.rules \
-	rules/73-idrac.rules
+	rules/73-idrac.rules \
+        rules/80-net-name-slot.rules
 
 nodist_udevrules_DATA += \
 	rules/99-systemd.rules
