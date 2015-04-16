@@ -4518,8 +4518,7 @@ bin_PROGRAMS += \
 
 dist_systemunit_DATA += \
 	units/systemd-journald.socket \
-	units/systemd-journald-dev-log.socket \
-	units/systemd-journald-audit.socket
+	units/systemd-journald-dev-log.socket
 
 nodist_systemunit_DATA += \
 	units/systemd-journald.service \
@@ -4539,8 +4538,7 @@ dist_catalog_DATA = \
 
 SOCKETS_TARGET_WANTS += \
 	systemd-journald.socket \
-	systemd-journald-dev-log.socket \
-	systemd-journald-audit.socket
+	systemd-journald-dev-log.socket
 
 SYSINIT_TARGET_WANTS += \
 	systemd-journald.service \
