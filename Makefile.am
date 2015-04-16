@@ -2288,14 +2288,14 @@ INSTALL_DIRS += \
 endif
 
 # ------------------------------------------------------------------------------
-dist_factory_etc_DATA = \
-	factory/etc/nsswitch.conf
-
-if HAVE_PAM
-dist_factory_pam_DATA = \
-	factory/etc/pam.d/system-auth \
-	factory/etc/pam.d/other
-endif
+#dist_factory_etc_DATA = \
+#	factory/etc/nsswitch.conf
+#
+#if HAVE_PAM
+#dist_factory_pam_DATA = \
+#	factory/etc/pam.d/system-auth \
+#	factory/etc/pam.d/other
+#endif
 
 # ------------------------------------------------------------------------------
 if ENABLE_FIRSTBOOT
