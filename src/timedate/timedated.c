@@ -280,39 +280,26 @@ static int context_read_ntp(Context *c, sd_bus *bus) {
         return 0;
 }
 
-static int context_start_ntp(Context *c, sd_bus *bus, sd_bus_error *error) {
+static int context_start_ntp(sd_bus *bus, sd_bus_error *error, bool enabled) {
         _cleanup_strv_free_ char **l = NULL;
         char **i;
         int r;
 
-        assert(c);
         assert(bus);
         assert(error);
 
         l = get_ntp_services();
         STRV_FOREACH(i, l) {
 
-                if (c->use_ntp)
-                        r = sd_bus_call_method(
-                                        bus,
-                                        "org.freedesktop.systemd1",
-                                        "/org/freedesktop/systemd1",
-                                        "org.freedesktop.systemd1.Manager",
-                                        "StartUnit",
-                                        error,
-                                        NULL,
-                                        "ss", *i, "replace");
-                else
-                        r = sd_bus_call_method(
-                                        bus,
-                                        "org.freedesktop.systemd1",
-                                        "/org/freedesktop/systemd1",
-                                        "org.freedesktop.systemd1.Manager",
-                                        "StopUnit",
-                                        error,
-                                        NULL,
-                                        "ss", *i, "replace");
-
+                r = sd_bus_call_method(
+                                bus,
+                                "org.freedesktop.systemd1",
+                                "/org/freedesktop/systemd1",
+                                "org.freedesktop.systemd1.Manager",
+                                enabled ? "StartUnit" : "StopUnit",
+                                error,
+                                NULL,
+                                "ss", *i, "replace");
                 if (r < 0) {
                         if (sd_bus_error_has_name(error, SD_BUS_ERROR_FILE_NOT_FOUND) ||
                             sd_bus_error_has_name(error, "org.freedesktop.systemd1.LoadFailed") ||
@@ -332,18 +319,17 @@ static int context_start_ntp(Context *c, sd_bus *bus, sd_bus_error *error) {
         return -ENOTSUP;
 }
 
-static int context_enable_ntp(Context*c, sd_bus *bus, sd_bus_error *error) {
+static int context_enable_ntp(sd_bus *bus, sd_bus_error *error, bool enabled) {
         _cleanup_strv_free_ char **l = NULL;
         char **i;
         int r;
 
-        assert(c);
         assert(bus);
         assert(error);
 
         l = get_ntp_services();
         STRV_FOREACH(i, l) {
-                if (c->use_ntp)
+                if (enabled)
                         r = sd_bus_call_method(
                                         bus,
                                         "org.freedesktop.systemd1",
@@ -662,15 +648,15 @@ static int method_set_time(sd_bus *bus, sd_bus_message *m, void *userdata, sd_bu
 }
 
 static int method_set_ntp(sd_bus *bus, sd_bus_message *m, void *userdata, sd_bus_error *error) {
-        int ntp, interactive;
+        int enabled, interactive;
         Context *c = userdata;
         int r;
 
-        r = sd_bus_message_read(m, "bb", &ntp, &interactive);
+        r = sd_bus_message_read(m, "bb", &enabled, &interactive);
         if (r < 0)
                 return r;
 
-        if ((bool)ntp == c->use_ntp)
+        if ((bool)enabled == c->use_ntp)
                 return sd_bus_reply_method_return(m, NULL);
 
         r = bus_verify_polkit_async(m, CAP_SYS_TIME, "org.freedesktop.timedate1.set-ntp", interactive, &c->polkit_registry, error);
@@ -679,15 +665,15 @@ static int method_set_ntp(sd_bus *bus, sd_bus_message *m, void *userdata, sd_bus
         if (r == 0)
                 return 1;
 
-        r = context_enable_ntp(c, bus, error);
+        r = context_enable_ntp(bus, error, enabled);
         if (r < 0)
                 return r;
 
-        r = context_start_ntp(c, bus, error);
+        r = context_start_ntp(bus, error, enabled);
         if (r < 0)
                 return r;
 
-        c->use_ntp = ntp;
+        c->use_ntp = enabled;
 
         log_info("Set NTP to %s", c->use_ntp ? "enabled" : "disabled");
 
