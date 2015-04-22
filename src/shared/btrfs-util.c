@@ -83,9 +83,21 @@ static int extract_subvolume_name(const char *path, const char **subvolume) {
         return 0;
 }
 
-int btrfs_is_snapshot(int fd) {
-        struct stat st;
+int btrfs_is_filesystem(int fd) {
         struct statfs sfs;
+
+        assert(fd >= 0);
+
+        if (fstatfs(fd, &sfs) < 0)
+                return -errno;
+
+        return F_TYPE_EQUAL(sfs.f_type, BTRFS_SUPER_MAGIC);
+}
+
+int btrfs_is_subvol(int fd) {
+        struct stat st;
+
+        assert(fd >= 0);
 
         /* On btrfs subvolumes always have the inode 256 */
 
@@ -95,10 +107,7 @@ int btrfs_is_snapshot(int fd) {
         if (!S_ISDIR(st.st_mode) || st.st_ino != 256)
                 return 0;
 
-        if (fstatfs(fd, &sfs) < 0)
-                return -errno;
-
-        return F_TYPE_EQUAL(sfs.f_type, BTRFS_SUPER_MAGIC);
+        return btrfs_is_filesystem(fd);
 }
 
 int btrfs_subvol_snapshot(const char *old_path, const char *new_path, bool read_only, bool fallback_copy) {
@@ -115,7 +124,7 @@ int btrfs_subvol_snapshot(const char *old_path, const char *new_path, bool read_
         if (old_fd < 0)
                 return -errno;
 
-        r = btrfs_is_snapshot(old_fd);
+        r = btrfs_is_subvol(old_fd);
         if (r < 0)
                 return r;
         if (r == 0) {
