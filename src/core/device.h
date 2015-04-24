@@ -53,7 +53,7 @@ struct Device {
         devices for the same sysfs path. We chain them up here. */
         LIST_FIELDS(struct Device, same_sysfs);
 
-        DeviceState state;
+        DeviceState state, deserialized_state;
 };
 
 extern const UnitVTable device_vtable;
