@@ -243,20 +243,23 @@ fail:
         return r;
 }
 
-void manager_gc(Manager *m, bool drop_not_started) {
+bool manager_gc(Manager *m, bool drop_not_started) {
         Machine *machine;
+        bool dbus_send_receive_performed = false;
 
         assert(m);
 
         while ((machine = m->machine_gc_queue)) {
                 LIST_REMOVE(Machine, gc_queue, m->machine_gc_queue, machine);
                 machine->in_gc_queue = false;
+                dbus_send_receive_performed = true;
 
                 if (machine_check_gc(machine, drop_not_started) == 0) {
                         machine_stop(machine);
                         machine_free(machine);
                 }
         }
+        return dbus_send_receive_performed;
 }
 
 int manager_startup(Manager *m) {
@@ -301,7 +304,8 @@ int manager_run(Manager *m) {
                 if (dbus_connection_dispatch(m->bus) != DBUS_DISPATCH_COMPLETE)
                         continue;
 
-                manager_gc(m, true);
+                if (manager_gc(m, true))
+                       continue;
 
                 n = epoll_wait(m->epoll_fd, &event, 1, -1);
                 if (n < 0) {

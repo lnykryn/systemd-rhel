@@ -59,7 +59,7 @@ int manager_enumerate_machines(Manager *m);
 int manager_startup(Manager *m);
 int manager_run(Manager *m);
 
-void manager_gc(Manager *m, bool drop_not_started);
+bool manager_gc(Manager *m, bool drop_not_started);
 
 int manager_get_machine_by_pid(Manager *m, pid_t pid, Machine **machine);
 
