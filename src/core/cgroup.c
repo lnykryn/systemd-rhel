@@ -188,7 +188,7 @@ static int whitelist_device(const char *path, const char *node, const char *acc)
 
         r = cg_set_attribute("devices", path, "devices.allow", buf);
         if (r < 0)
-                log_warning("Failed to set devices.allow on %s: %s", path, strerror(-r));
+                log_full(IN_SET(r, -ENOENT, -EROFS, -EINVAL) ? LOG_DEBUG : LOG_WARNING, "Failed to set devices.allow on %s: %s", path, strerror(-r));
 
         return r;
 }
@@ -208,7 +208,8 @@ void cgroup_context_apply(CGroupContext *c, CGroupControllerMask mask, const cha
                 sprintf(buf, "%lu\n", c->cpu_shares);
                 r = cg_set_attribute("cpu", path, "cpu.shares", buf);
                 if (r < 0)
-                        log_warning("Failed to set cpu.shares on %s: %s", path, strerror(-r));
+                        log_full(IN_SET(r, -ENOENT, -EROFS) ? LOG_DEBUG : LOG_WARNING, "Failed to set cpu.shares on %s: %s", path, strerror(-r));
+
         }
 
         if (mask & CGROUP_BLKIO) {
@@ -221,7 +222,7 @@ void cgroup_context_apply(CGroupContext *c, CGroupControllerMask mask, const cha
                 sprintf(buf, "%lu\n", c->blockio_weight);
                 r = cg_set_attribute("blkio", path, "blkio.weight", buf);
                 if (r < 0)
-                        log_warning("Failed to set blkio.weight on %s: %s", path, strerror(-r));
+                        log_full(IN_SET(r, -ENOENT, -EROFS) ? LOG_DEBUG : LOG_WARNING, "Failed to set blkio.weight on %s: %s", path, strerror(-r));
 
                 /* FIXME: no way to reset this list */
                 LIST_FOREACH(device_weights, w, c->blockio_device_weights) {
@@ -234,7 +235,7 @@ void cgroup_context_apply(CGroupContext *c, CGroupControllerMask mask, const cha
                         sprintf(buf, "%u:%u %lu", major(dev), minor(dev), w->weight);
                         r = cg_set_attribute("blkio", path, "blkio.weight_device", buf);
                         if (r < 0)
-                                log_error("Failed to set blkio.weight_device on %s: %s", path, strerror(-r));
+                                log_full(IN_SET(r, -ENOENT, -EROFS) ? LOG_DEBUG : LOG_WARNING, "Failed to set blkio.weight_device on %s: %s", path, strerror(-r));
                 }
 
                 /* FIXME: no way to reset this list */
@@ -251,7 +252,7 @@ void cgroup_context_apply(CGroupContext *c, CGroupControllerMask mask, const cha
                         sprintf(buf, "%u:%u %" PRIu64 "\n", major(dev), minor(dev), b->bandwidth);
                         r = cg_set_attribute("blkio", path, a, buf);
                         if (r < 0)
-                                log_error("Failed to set %s on %s: %s", a, path, strerror(-r));
+                                log_full(IN_SET(r, -ENOENT, -EROFS) ? LOG_DEBUG : LOG_WARNING, "Failed to set %s on %s: %s", a, path, strerror(-r));
                 }
         }
 
@@ -265,7 +266,7 @@ void cgroup_context_apply(CGroupContext *c, CGroupControllerMask mask, const cha
                         r = cg_set_attribute("memory", path, "memory.limit_in_bytes", "-1");
 
                 if (r < 0)
-                        log_error("Failed to set memory.limit_in_bytes on %s: %s", path, strerror(-r));
+                        log_full(IN_SET(r, -ENOENT, -EROFS) ? LOG_DEBUG : LOG_WARNING, "Failed to set memory.limit_in_bytes on %s: %s", path, strerror(-r));
         }
 
         if (mask & CGROUP_DEVICE) {
