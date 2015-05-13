@@ -692,6 +692,13 @@ static int fix_order(SysvStub *s, Hashmap *all_services) {
         if (s->sysv_start_priority < 0)
                 return 0;
 
+        /* RHEL-only, services with more than 10 should be start after network */
+        if (s->sysv_start_priority > 10) {
+                r = strv_extend(&s->after, SPECIAL_NETWORK_ONLINE_TARGET);
+                if (r < 0)
+                        return log_oom();
+        }
+
         HASHMAP_FOREACH(other, all_services, j) {
                 if (s == other)
                         continue;
