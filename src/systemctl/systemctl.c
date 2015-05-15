@@ -138,6 +138,7 @@ static char *arg_host = NULL;
 static unsigned arg_lines = 10;
 static OutputMode arg_output = OUTPUT_SHORT;
 static bool arg_plain = false;
+static bool arg_now = false;
 
 static bool original_stdout_is_tty;
 
@@ -1979,7 +1980,7 @@ static int set_default(sd_bus *bus, char **args) {
                         return r;
                 }
 
-                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet);
+                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet, NULL, NULL);
                 if (r < 0)
                         return r;
 
@@ -5415,7 +5416,7 @@ static int enable_unit(sd_bus *bus, char **args) {
                                 return bus_log_parse_error(r);
                 }
 
-                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet);
+                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet, &changes, &n_changes);
                 if (r < 0)
                         return r;
 
@@ -5436,6 +5437,18 @@ static int enable_unit(sd_bus *bus, char **args) {
                             "   a requirement dependency on it.\n"
                             "3) A unit may be started when needed via activation (socket, path, timer,\n"
                             "   D-Bus, udev, scripted systemctl call, ...).\n");
+
+        if (arg_now && n_changes > 0 && STR_IN_SET(args[0], "enable", "disable", "mask")) {
+                char *new_args[n_changes + 2];
+                unsigned i;
+
+                new_args[0] = streq(args[0], "enable") ? (char *)"start" : (char *)"stop";
+                for (i = 0; i < n_changes; i++)
+                        new_args[i + 1] = basename(changes[i].path);
+                new_args[i + 1] = NULL;
+
+                r = start_unit(bus, new_args);
+        }
 
 finish:
         unit_file_changes_free(changes, n_changes);
@@ -5516,7 +5529,7 @@ static int add_dependency(sd_bus *bus, char **args) {
                         return r;
                 }
 
-                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet);
+                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet, NULL, NULL);
                 if (r < 0)
                         return r;
 
@@ -5582,7 +5595,7 @@ static int preset_all(sd_bus *bus, char **args) {
                         return r;
                 }
 
-                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet);
+                r = bus_deserialize_and_dump_unit_file_changes(reply, arg_quiet, NULL, NULL);
                 if (r < 0)
                         return r;
 
@@ -6058,6 +6071,7 @@ static void systemctl_help(void) {
                "                      When shutting down or sleeping, ignore inhibitors\n"
                "     --kill-who=WHO   Who to send signal to\n"
                "  -s --signal=SIGNAL  Which signal to send\n"
+               "     --now            Start or stop unit in addition to enabling or disabling it\n"
                "  -q --quiet          Suppress output\n"
                "     --no-block       Do not wait until operation finished\n"
                "     --no-wall        Don't send wall message before halt/power-off/reboot\n"
@@ -6255,6 +6269,7 @@ static int systemctl_parse_argv(int argc, char *argv[]) {
                 ARG_STATE,
                 ARG_JOB_MODE,
                 ARG_PRESET_MODE,
+                ARG_NOW,
         };
 
         static const struct option options[] = {
@@ -6297,6 +6312,7 @@ static int systemctl_parse_argv(int argc, char *argv[]) {
                 { "state",               required_argument, NULL, ARG_STATE               },
                 { "recursive",           no_argument,       NULL, 'r'                     },
                 { "preset-mode",         required_argument, NULL, ARG_PRESET_MODE         },
+                { "now",                 no_argument,       NULL, ARG_NOW                 },
                 {}
         };
 
@@ -6571,6 +6587,10 @@ static int systemctl_parse_argv(int argc, char *argv[]) {
                                 return -EINVAL;
                         }
 
+                        break;
+
+                case ARG_NOW:
+                        arg_now = true;
                         break;
 
                 case '?':
