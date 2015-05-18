@@ -128,12 +128,12 @@ static enum {
         ACTION_VACUUM,
 } arg_action = ACTION_SHOW;
 
-typedef struct boot_id_t {
+typedef struct BootId {
         sd_id128_t id;
         uint64_t first;
         uint64_t last;
-        LIST_FIELDS(struct boot_id_t, boot_list);
-} boot_id_t;
+        LIST_FIELDS(struct BootId, boot_list);
+} BootId;
 
 static int add_matches_for_device(sd_journal *j, const char *devpath) {
         int r;
@@ -934,13 +934,15 @@ static int add_matches(sd_journal *j, char **args) {
         return 0;
 }
 
-static int discover_next_boot(sd_journal *j,
-                              boot_id_t **boot,
-                              bool advance_older,
-                              bool read_realtime) {
+static int discover_next_boot(
+                sd_journal *j,
+                BootId **boot,
+                bool advance_older,
+                bool read_realtime) {
+
         int r;
         char match[9+32+1] = "_BOOT_ID=";
-        _cleanup_free_ boot_id_t *next_boot = NULL;
+        _cleanup_free_ BootId *next_boot = NULL;
 
         assert(j);
         assert(boot);
@@ -965,7 +967,7 @@ static int discover_next_boot(sd_journal *j,
         else if (r == 0)
                 return 0; /* End of journal, yay. */
 
-        next_boot = new0(boot_id_t, 1);
+        next_boot = new0(BootId, 1);
         if (!next_boot)
                 return log_oom();
 
@@ -1012,13 +1014,15 @@ static int discover_next_boot(sd_journal *j,
         return 0;
 }
 
-static int get_boots(sd_journal *j,
-                     boot_id_t **boots,
-                     boot_id_t *query_ref_boot,
-                     int ref_boot_offset) {
+static int get_boots(
+                sd_journal *j,
+                BootId **boots,
+                BootId *query_ref_boot,
+                int ref_boot_offset) {
+
         bool skip_once;
         int r, count = 0;
-        boot_id_t *head = NULL, *tail = NULL;
+        BootId *head = NULL, *tail = NULL;
         const bool advance_older = query_ref_boot && ref_boot_offset <= 0;
 
         assert(j);
@@ -1073,12 +1077,12 @@ static int get_boots(sd_journal *j,
                 /* No sd_journal_next/previous here. */
         }
 
-        while (true) {
-                _cleanup_free_ boot_id_t *current = NULL;
+        for (;;) {
+                _cleanup_free_ BootId *current = NULL;
 
                 r = discover_next_boot(j, &current, advance_older, !query_ref_boot);
                 if (r < 0) {
-                        boot_id_t *id, *id_next;
+                        BootId *id, *id_next;
                         LIST_FOREACH_SAFE(boot_list, id, id_next, head)
                                 free(id);
                         return r;
@@ -1116,7 +1120,7 @@ finish:
 
 static int list_boots(sd_journal *j) {
         int w, i, count;
-        boot_id_t *id, *id_next, *all_ids;
+        BootId *id, *id_next, *all_ids;
 
         assert(j);
 
@@ -1148,7 +1152,7 @@ static int list_boots(sd_journal *j) {
 static int add_boot(sd_journal *j) {
         char match[9+32+1] = "_BOOT_ID=";
         int r;
-        boot_id_t ref_boot_id = {};
+        BootId ref_boot_id = {};
 
         assert(j);
 
