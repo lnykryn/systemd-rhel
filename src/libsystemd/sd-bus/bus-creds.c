@@ -698,20 +698,17 @@ int bus_creds_add_more(sd_bus_creds *c, uint64_t mask, pid_t pid, pid_t tid) {
                 return 0;
 
         /* Try to retrieve PID from creds if it wasn't passed to us */
-        if (pid <= 0 && (c->mask & SD_BUS_CREDS_PID))
-                pid = c->pid;
-
-        if (tid <= 0 && (c->mask & SD_BUS_CREDS_TID))
-                tid = c->pid;
-
-        /* Without pid we cannot do much... */
-        if (pid <= 0)
-                return 0;
-
         if (pid > 0) {
                 c->pid = pid;
                 c->mask |= SD_BUS_CREDS_PID;
-        }
+        } else if (c->mask & SD_BUS_CREDS_PID)
+                pid = c->pid;
+        else
+                /* Without pid we cannot do much... */
+                return 0;
+
+        if (tid <= 0 && (c->mask & SD_BUS_CREDS_TID))
+                tid = c->pid;
 
         if (tid > 0) {
                 c->tid = tid;
