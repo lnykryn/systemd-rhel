@@ -49,7 +49,7 @@ static void help(void) {
                "     --ready           Inform the init system about service start-up completion\n"
                "     --pid[=PID]       Set main pid of daemon\n"
                "     --status=TEXT     Set status text\n"
-               "     --booted          Check if the system was booted up with systemd\n",
+               "     --booted          Check if the system was booted up with systemd\n"
                "     --readahead=ACTION Controls read-ahead operations\n",
                program_invocation_short_name);
 }
