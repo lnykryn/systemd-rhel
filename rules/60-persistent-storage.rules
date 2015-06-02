@@ -54,7 +54,9 @@ KERNEL=="mspblk[0-9]p[0-9]", ENV{ID_NAME}=="?*", ENV{ID_SERIAL}=="?*", SYMLINK+=
 # by-path (parent device path)
 ENV{DEVTYPE}=="disk", DEVPATH!="*/virtual/*", IMPORT{builtin}="path_id"
 ENV{DEVTYPE}=="disk", ENV{ID_PATH}=="?*", SYMLINK+="disk/by-path/$env{ID_PATH}"
+ENV{DEVTYPE}=="disk", ENV{ID_SAS_PATH}=="?*", SYMLINK+="disk/by-path/$env{ID_SAS_PATH}"
 ENV{DEVTYPE}=="partition", ENV{ID_PATH}=="?*", SYMLINK+="disk/by-path/$env{ID_PATH}-part%n"
+ENV{DEVTYPE}=="partition", ENV{ID_SAS_PATH}=="?*", SYMLINK+="disk/by-path/$env{ID_SAS_PATH}-part%n"
 
 # skip unpartitioned removable media devices from drivers which do not send "change" events
 ENV{DEVTYPE}=="disk", KERNEL!="sd*|sr*", ATTR{removable}=="1", GOTO="persistent_storage_end"

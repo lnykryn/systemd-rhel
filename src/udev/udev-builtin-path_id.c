@@ -154,7 +154,7 @@ out:
         return parent;
 }
 
-static struct udev_device *handle_scsi_sas(struct udev_device *parent, char **path)
+static struct udev_device *handle_scsi_sas(struct udev_device *parent, bool enable_new_sas_path, char **path, bool *new_sas_path)
 {
         struct udev *udev  = udev_device_get_udev(parent);
         struct udev_device *targetdev;
@@ -168,6 +168,8 @@ static struct udev_device *handle_scsi_sas(struct udev_device *parent, char **pa
         const char *phy_id;
         const char *phy_count;
         char *lun = NULL;
+
+        *new_sas_path = false;
 
         targetdev = udev_device_get_parent_with_subsystem_devtype(parent, "scsi", "scsi_target");
         if (targetdev == NULL)
@@ -201,7 +203,7 @@ static struct udev_device *handle_scsi_sas(struct udev_device *parent, char **pa
         }
 
         /* Check if we are simple disk */
-        if (strncmp(phy_count, "1", 2) != 0) {
+        if (strncmp(phy_count, "1", 2) != 0 || !enable_new_sas_path) {
                  parent = handle_scsi_sas_wide_port(parent, path);
                  goto out;
         }
@@ -241,6 +243,8 @@ static struct udev_device *handle_scsi_sas(struct udev_device *parent, char **pa
 
         if (lun)
                 free(lun);
+
+        *new_sas_path = true;
 out:
         udev_device_unref(target_sasdev);
         udev_device_unref(expander_sasdev);
@@ -466,7 +470,7 @@ out:
         return hostdev;
 }
 
-static struct udev_device *handle_scsi(struct udev_device *parent, char **path, bool *supported_parent) {
+static struct udev_device *handle_scsi(struct udev_device *parent, bool enable_new_sas_path, char **path, bool *supported_parent, bool *new_sas_path) {
         const char *devtype;
         const char *name;
         const char *id;
@@ -494,7 +498,7 @@ static struct udev_device *handle_scsi(struct udev_device *parent, char **path, 
         }
 
         if (strstr(name, "/end_device-") != NULL) {
-                parent = handle_scsi_sas(parent, path);
+                parent = handle_scsi_sas(parent, enable_new_sas_path, path, new_sas_path);
                 *supported_parent = true;
                 goto out;
         }
@@ -610,6 +614,8 @@ static int builtin_path_id(struct udev_device *dev, int argc, char *argv[], bool
         char *path = NULL;
         bool supported_transport = false;
         bool supported_parent = false;
+        bool new_sas_path = false;
+        bool enable_new_sas_path = true;
 
         /* S390 ccw bus */
         parent = udev_device_get_parent_with_subsystem_devtype(dev, "ccw", NULL);
@@ -618,6 +624,8 @@ static int builtin_path_id(struct udev_device *dev, int argc, char *argv[], bool
                 goto out;
         }
 
+restart:
+        ;
         /* walk up the chain of devices and compose path */
         parent = dev;
         while (parent != NULL) {
@@ -629,7 +637,7 @@ static int builtin_path_id(struct udev_device *dev, int argc, char *argv[], bool
                 } else if (streq(subsys, "scsi_tape")) {
                         handle_scsi_tape(parent, &path);
                 } else if (streq(subsys, "scsi")) {
-                        parent = handle_scsi(parent, &path, &supported_parent);
+                        parent = handle_scsi(parent, enable_new_sas_path, &path, &supported_parent, &new_sas_path);
                         supported_transport = true;
                 } else if (streq(subsys, "cciss")) {
                         parent = handle_cciss(parent, &path);
@@ -721,9 +729,20 @@ out:
                         i--;
                 tag[i] = '\0';
 
-                udev_builtin_add_property(dev, test, "ID_PATH", path);
-                udev_builtin_add_property(dev, test, "ID_PATH_TAG", tag);
+                if (new_sas_path) {
+                        udev_builtin_add_property(dev, test, "ID_SAS_PATH", path);
+                } else {
+                        udev_builtin_add_property(dev, test, "ID_PATH", path);
+                        udev_builtin_add_property(dev, test, "ID_PATH_TAG", tag);
+                }
+
                 free(path);
+
+                if (new_sas_path) {
+                        enable_new_sas_path = false;
+                        goto restart;
+                }
+
                 return EXIT_SUCCESS;
         }
         return EXIT_FAILURE;
