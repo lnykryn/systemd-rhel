@@ -2619,6 +2619,7 @@ int unit_serialize(Unit *u, FILE *f, FDSet *fds, bool serialize_jobs) {
 
         if (u->cgroup_path)
                 unit_serialize_item(u, f, "cgroup", u->cgroup_path);
+        unit_serialize_item(u, f, "cgroup-realized", yes_no(u->cgroup_realized));
 
         if (serialize_jobs) {
                 if (u->job) {
@@ -2808,6 +2809,16 @@ int unit_deserialize(Unit *u, FILE *f, FDSet *fds) {
 
                         u->cgroup_path = s;
                         assert(hashmap_put(u->manager->cgroup_unit, s, u) == 1);
+
+                        continue;
+                } else if (streq(l, "cgroup-realized")) {
+                        int b;
+
+                        b = parse_boolean(v);
+                        if (b < 0)
+                                log_unit_debug(u->id, "Failed to parse cgroup-realized bool %s, ignoring.", v);
+                        else
+                                u->cgroup_realized = b;
 
                         continue;
                 }
