@@ -737,6 +737,10 @@ out:
                 }
 
                 free(path);
+                path = NULL;
+                supported_transport = false;
+                supported_parent = false;
+
 
                 if (new_sas_path) {
                         enable_new_sas_path = false;
