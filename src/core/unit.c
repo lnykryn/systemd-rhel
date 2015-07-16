@@ -1417,6 +1417,15 @@ static void unit_status_log_starting_stopping_reloading(Unit *u, JobType t) {
                         NULL);
 }
 
+void unit_status_emit_starting_stopping_reloading(Unit *u, JobType t) {
+
+        unit_status_log_starting_stopping_reloading(u, t);
+
+        /* Reload status messages have traditionally not been printed to console. */
+        if (t != JOB_RELOAD)
+                unit_status_print_starting_stopping(u, t);
+}
+
 /* Errors:
  *         -EBADR:     This unit type does not support starting.
  *         -EALREADY:  Unit is already started.
@@ -1427,7 +1436,6 @@ static void unit_status_log_starting_stopping_reloading(Unit *u, JobType t) {
 int unit_start(Unit *u) {
         UnitActiveState state;
         Unit *following;
-        int r;
 
         assert(u);
 
@@ -1481,14 +1489,7 @@ int unit_start(Unit *u) {
 
         unit_add_to_dbus_queue(u);
 
-        r = UNIT_VTABLE(u)->start(u);
-        if (r <= 0)
-                return r;
-
-        /* Log if the start function actually did something */
-        unit_status_log_starting_stopping_reloading(u, JOB_START);
-        unit_status_print_starting_stopping(u, JOB_START);
-        return r;
+        return UNIT_VTABLE(u)->start(u);
 }
 
 bool unit_can_start(Unit *u) {
@@ -1512,7 +1513,6 @@ bool unit_can_isolate(Unit *u) {
 int unit_stop(Unit *u) {
         UnitActiveState state;
         Unit *following;
-        int r;
 
         assert(u);
 
@@ -1531,13 +1531,7 @@ int unit_stop(Unit *u) {
 
         unit_add_to_dbus_queue(u);
 
-        r = UNIT_VTABLE(u)->stop(u);
-        if (r <= 0)
-                return r;
-
-        unit_status_log_starting_stopping_reloading(u, JOB_STOP);
-        unit_status_print_starting_stopping(u, JOB_STOP);
-        return r;
+        return UNIT_VTABLE(u)->stop(u);
 }
 
 /* Errors:
@@ -1548,7 +1542,6 @@ int unit_stop(Unit *u) {
 int unit_reload(Unit *u) {
         UnitActiveState state;
         Unit *following;
-        int r;
 
         assert(u);
 
@@ -1575,12 +1568,7 @@ int unit_reload(Unit *u) {
 
         unit_add_to_dbus_queue(u);
 
-        r = UNIT_VTABLE(u)->reload(u);
-        if (r <= 0)
-                return r;
-
-        unit_status_log_starting_stopping_reloading(u, JOB_RELOAD);
-        return r;
+        return UNIT_VTABLE(u)->reload(u);
 }
 
 bool unit_can_reload(Unit *u) {
