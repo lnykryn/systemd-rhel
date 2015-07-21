@@ -736,8 +736,7 @@ static void job_log_status_message(Unit *u, JobType t, JobResult result) {
                                 LOG_MESSAGE("%s", buf),
                                 "RESULT=%s", job_result_to_string(result),
                                 NULL);
-
-        } else if (t == JOB_STOP)
+        } else if (t == JOB_STOP || t == JOB_RESTART)
                 log_unit_struct(u->id,
                                 result == JOB_DONE ? LOG_INFO : LOG_ERR,
                                 LOG_MESSAGE_ID(SD_MESSAGE_UNIT_STOPPED),
@@ -749,6 +748,12 @@ static void job_log_status_message(Unit *u, JobType t, JobResult result) {
                 log_unit_struct(u->id,
                                 result == JOB_DONE ? LOG_INFO : LOG_ERR,
                                 LOG_MESSAGE_ID(SD_MESSAGE_UNIT_RELOADED),
+                                LOG_MESSAGE("%s", buf),
+                                "RESULT=%s", job_result_to_string(result),
+                                NULL);
+        else
+                log_unit_struct(u->id,
+                                result == JOB_DONE ? LOG_INFO : LOG_ERR,
                                 LOG_MESSAGE("%s", buf),
                                 "RESULT=%s", job_result_to_string(result),
                                 NULL);
