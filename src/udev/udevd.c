@@ -990,7 +990,10 @@ static void kernel_cmdline_options(struct udev *udev) {
                         int prio;
 
                         prio = util_log_priority(value);
-                        log_set_max_level(prio);
+                        if (prio < 0)
+                                log_warning("Invalid udev.log-priority ignored: %s", value);
+                        else
+                                log_set_max_level(prio);
                 } else if ((value = startswith(opt, "udev.children-max="))) {
                         r = safe_atoi(value, &arg_children_max);
                         if (r < 0)
