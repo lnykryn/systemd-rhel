@@ -685,13 +685,6 @@ static void job_print_status_message(Unit *u, JobType t, JobResult result) {
         assert(t >= 0);
         assert(t < _JOB_TYPE_MAX);
 
-        /* Reload status messages have traditionally not been printed to console. */
-        if (t == JOB_RELOAD)
-                return;
-
-        if (t == JOB_START && result == JOB_DONE && !u->condition_result)
-                return;
-
         format = job_get_status_message_format(u, t, result);
         if (!format)
                 return;
@@ -761,6 +754,19 @@ static void job_log_status_message(Unit *u, JobType t, JobResult result) {
                                 NULL);
 }
 
+static void job_emit_status_message(Unit *u, JobType t, JobResult result) {
+
+        /* No message if the job did not actually do anything due to failed condition. */
+        if (t == JOB_START && result == JOB_DONE && !u->condition_result)
+                return;
+
+        job_log_status_message(u, t, result);
+
+        /* Reload status messages have traditionally not been printed to console. */
+        if (t != JOB_RELOAD)
+                job_print_status_message(u, t, result);
+}
+
 int job_finish_and_invalidate(Job *j, JobResult result, bool recursive, bool already) {
         Unit *u;
         Unit *other;
@@ -780,10 +786,8 @@ int job_finish_and_invalidate(Job *j, JobResult result, bool recursive, bool alr
                        u->id, job_type_to_string(t), job_result_to_string(result));
 
         /* If this job did nothing to respective unit we don't log the status message */
-        if (!already) {
-                job_print_status_message(u, t, result);
-                job_log_status_message(u, t, result);
-        }
+        if (!already)
+                job_emit_status_message(u, t, result);
 
         job_add_to_dbus_queue(j);
 
