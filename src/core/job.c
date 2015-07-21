@@ -707,6 +707,17 @@ static void job_print_status_message(Unit *u, JobType t, JobResult result) {
 static void job_log_status_message(Unit *u, JobType t, JobResult result) {
         const char *format;
         char buf[LINE_MAX];
+        static const int job_result_log_level[_JOB_RESULT_MAX] = {
+                [JOB_DONE]        = LOG_INFO,
+                [JOB_CANCELED]    = LOG_INFO,
+                [JOB_TIMEOUT]     = LOG_ERR,
+                [JOB_FAILED]      = LOG_ERR,
+                [JOB_DEPENDENCY]  = LOG_WARNING,
+                [JOB_SKIPPED]     = LOG_NOTICE,
+                [JOB_INVALID]     = LOG_INFO,
+                [JOB_ASSERT]      = LOG_WARNING,
+                [JOB_UNSUPPORTED] = LOG_WARNING,
+        };
 
         assert(u);
         assert(t >= 0);
@@ -731,14 +742,14 @@ static void job_log_status_message(Unit *u, JobType t, JobResult result) {
 
                 mid = result == JOB_DONE ? SD_MESSAGE_UNIT_STARTED : SD_MESSAGE_UNIT_FAILED;
                 log_unit_struct(u->id,
-                                result == JOB_DONE ? LOG_INFO : LOG_ERR,
+                                job_result_log_level[result],
                                 LOG_MESSAGE_ID(mid),
                                 LOG_MESSAGE("%s", buf),
                                 "RESULT=%s", job_result_to_string(result),
                                 NULL);
         } else if (t == JOB_STOP || t == JOB_RESTART)
                 log_unit_struct(u->id,
-                                result == JOB_DONE ? LOG_INFO : LOG_ERR,
+                                job_result_log_level[result],
                                 LOG_MESSAGE_ID(SD_MESSAGE_UNIT_STOPPED),
                                 LOG_MESSAGE("%s", buf),
                                 "RESULT=%s", job_result_to_string(result),
@@ -746,14 +757,14 @@ static void job_log_status_message(Unit *u, JobType t, JobResult result) {
 
         else if (t == JOB_RELOAD)
                 log_unit_struct(u->id,
-                                result == JOB_DONE ? LOG_INFO : LOG_ERR,
+                                job_result_log_level[result],
                                 LOG_MESSAGE_ID(SD_MESSAGE_UNIT_RELOADED),
                                 LOG_MESSAGE("%s", buf),
                                 "RESULT=%s", job_result_to_string(result),
                                 NULL);
         else
                 log_unit_struct(u->id,
-                                result == JOB_DONE ? LOG_INFO : LOG_ERR,
+                                job_result_log_level[result],
                                 LOG_MESSAGE("%s", buf),
                                 "RESULT=%s", job_result_to_string(result),
                                 NULL);
