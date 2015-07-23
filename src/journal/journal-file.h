@@ -234,3 +234,6 @@ static inline bool JOURNAL_FILE_COMPRESS(JournalFile *f) {
         assert(f);
         return f->compress_xz || f->compress_lz4;
 }
+
+int journal_file_map_data_hash_table(JournalFile *f);
+int journal_file_map_field_hash_table(JournalFile *f);
