@@ -499,6 +499,7 @@ static int automount_send_ready(Automount *a, Set *tokens, int status) {
 
 int automount_update_mount(Automount *a, MountState old_state, MountState state) {
         _cleanup_close_ int ioctl_fd = -1;
+        int r;
 
         assert(a);
 
@@ -506,6 +507,9 @@ int automount_update_mount(Automount *a, MountState old_state, MountState state)
         case MOUNT_MOUNTED:
         case MOUNT_REMOUNTING:
                 automount_send_ready(a, a->tokens, 0);
+                r = automount_start_expire(a);
+                if (r < 0)
+                        log_unit_warning_errno(UNIT(a)->id, r, "Failed to start expiration timer, ignoring: %m");
                 break;
          case MOUNT_DEAD:
          case MOUNT_UNMOUNTING:
@@ -518,6 +522,7 @@ int automount_update_mount(Automount *a, MountState old_state, MountState state)
          case MOUNT_FAILED:
                 if (old_state != state)
                         automount_send_ready(a, a->tokens, -ENODEV);
+                (void) sd_event_source_set_enabled(a->expire_event_source, SD_EVENT_OFF);
                 break;
         default:
                 break;
@@ -767,10 +772,6 @@ static void automount_enter_running(Automount *a) {
                                 UNIT(a)->id, bus_error_message(&error, r));
                 goto fail;
         }
-
-        r = automount_start_expire(a);
-        if (r < 0)
-                log_unit_warning_errno(UNIT(a)->id, r, "Failed to start expiration timer, ignoring: %m");
 
         automount_set_state(a, AUTOMOUNT_RUNNING);
         return;
