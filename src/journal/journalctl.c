@@ -2141,6 +2141,12 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE;
         }
 
+        if (r == 0) {
+                printf("-- No entries --\n");
+                return EXIT_SUCCESS;
+        }
+
+
         if (!arg_follow)
                 pager_open_if_enabled();
 
