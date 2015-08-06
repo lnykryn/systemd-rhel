@@ -187,7 +187,8 @@ static int mount_dev(BindMount *m) {
         mount("/dev/hugepages", devhugepages, NULL, MS_BIND, NULL);
 
         devlog = strjoina(temporary_mount, "/dev/log");
-        symlink("/run/systemd/journal/dev-log", devlog);
+        (void)touch(devlog);
+        mount("/dev/log", devlog, NULL, MS_BIND, NULL);
 
         NULSTR_FOREACH(d, devnodes) {
                 _cleanup_free_ char *dn = NULL;
