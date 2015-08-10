@@ -1577,10 +1577,6 @@ int server_init(Server *s) {
         if (r < 0)
                 return r;
 
-        r = server_open_audit(s);
-        if (r < 0)
-                return r;
-
         r = server_open_kernel_seqnum(s);
         if (r < 0)
                 return r;
