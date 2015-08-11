@@ -956,7 +956,6 @@ static int help(void) {
                "     --dump-configuration-items  Dump understood unit configuration items\n"
                "     --unit=UNIT                 Set default unit\n"
                "     --system                    Run a system instance, even if PID != 1\n"
-               "     --user                      Run a user instance\n"
                "     --dump-core[=0|1]           Dump core on crash\n"
                "     --crash-shell[=0|1]         Run shell on crash\n"
                "     --confirm-spawn[=0|1]       Ask for confirmation when spawning processes\n"

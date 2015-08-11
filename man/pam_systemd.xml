@@ -78,9 +78,7 @@
       <listitem><para>A new systemd scope unit is created for the
       session. If this is the first concurrent session of the user, an
       implicit slice below <filename>user.slice</filename> is
-      automatically created and the scope placed into it. An instance
-      of the system service <filename>user@.service</filename>, which
-      runs the systemd user manager instance, is started.
+      automatically created and the scope placed into it.
       </para></listitem>
     </orderedlist>
 
@@ -91,8 +89,7 @@
       <citerefentry><refentrytitle>logind.conf</refentrytitle>
       <manvolnum>5</manvolnum></citerefentry>, all processes of the
       session are terminated. If the last concurrent session of a user
-      ends, the user's systemd instance will be terminated too, and so
-      will the user's slice unit.</para></listitem>
+      ends, the user's slice unit will be terminated too.</para></listitem>
 
       <listitem><para>If the last concurrent session of a user ends,
       the <varname>$XDG_RUNTIME_DIR</varname> directory and all its

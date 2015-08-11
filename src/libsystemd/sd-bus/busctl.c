@@ -1688,7 +1688,6 @@ static int help(void) {
                "     --no-pager           Do not pipe output into a pager\n"
                "     --no-legend          Do not show the headers and footers\n"
                "     --system             Connect to system bus\n"
-               "     --user               Connect to user bus\n"
                "  -H --host=[USER@]HOST   Operate on remote host\n"
                "  -M --machine=CONTAINER  Operate on local container\n"
                "     --address=ADDRESS    Connect to bus specified by address\n"

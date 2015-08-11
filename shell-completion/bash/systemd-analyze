@@ -35,7 +35,7 @@ _systemd_analyze() {
         local cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
 
         local -A OPTS=(
-               [STANDALONE]='--help --version --system --user --from-pattern --to-pattern --order --require --no-pager'
+               [STANDALONE]='--help --version --system --from-pattern --to-pattern --order --require --no-pager'
                       [ARG]='-H --host -M --machine --fuzz --man'
         )
 
@@ -80,29 +80,29 @@ _systemd_analyze() {
 
         elif __contains_word "$verb" ${VERBS[STANDALONE]}; then
                 if [[ $cur = -* ]]; then
-                        comps='--help --version --system --user'
+                        comps='--help --version --system '
                 fi
 
         elif __contains_word "$verb" ${VERBS[CRITICAL_CHAIN]}; then
                 if [[ $cur = -* ]]; then
-                        comps='--help --version --system --user --fuzz'
+                        comps='--help --version --system --fuzz'
                 fi
 
         elif __contains_word "$verb" ${VERBS[DOT]}; then
                 if [[ $cur = -* ]]; then
-                        comps='--help --version --system --user --from-pattern --to-pattern --order --require'
+                        comps='--help --version --system --from-pattern --to-pattern --order --require'
                 fi
 
         elif __contains_word "$verb" ${VERBS[LOG_LEVEL]}; then
                 if [[ $cur = -* ]]; then
-                        comps='--help --version --system --user'
+                        comps='--help --version --system'
                 else
                         comps='debug info notice warning err crit alert emerg'
                 fi
 
         elif __contains_word "$verb" ${VERBS[VERIFY]}; then
                 if [[ $cur = -* ]]; then
-                        comps='--help --version --system --user --no-man'
+                        comps='--help --version --system --no-man'
                 else
                         comps=$( compgen -A file -- "$cur" )
                         compopt -o filenames

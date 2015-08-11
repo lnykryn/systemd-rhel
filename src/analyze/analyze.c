@@ -1170,7 +1170,6 @@ static void help(void) {
                "     --version            Show package version\n"
                "     --no-pager           Do not pipe output into a pager\n"
                "     --system             Operate on system systemd instance\n"
-               "     --user               Operate on user systemd instance\n"
                "  -H --host=[USER@]HOST   Operate on remote host\n"
                "  -M --machine=CONTAINER  Operate on local container\n"
                "     --order              Show only order in the graph\n"

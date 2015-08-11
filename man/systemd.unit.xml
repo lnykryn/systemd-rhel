@@ -263,14 +263,6 @@
     in directories listed earlier override files with the same name in
     directories lower in the list.</para>
 
-    <para>When systemd is running in user mode
-    (<option>--user</option>) and the variable
-    <varname>$SYSTEMD_UNIT_PATH</varname> is set, the contents of this
-    variable overrides the unit load path. If
-    <varname>$SYSTEMD_UNIT_PATH</varname> ends with an empty component
-    (<literal>:</literal>), the usual unit load path will be appended
-    to the contents of the variable.</para>
-
     <table>
       <title>
         Load path when running in system mode (<option>--system</option>).
@@ -297,57 +289,6 @@
           <row>
       <entry><filename>/usr/lib/systemd/system</filename></entry>
       <entry>Units of installed packages</entry>
-          </row>
-        </tbody>
-      </tgroup>
-    </table>
-
-    <table>
-      <title>
-        Load path when running in user mode (<option>--user</option>).
-      </title>
-
-      <tgroup cols='2'>
-        <colspec colname='path' />
-        <colspec colname='expl' />
-        <thead>
-          <row>
-      <entry>Path</entry>
-      <entry>Description</entry>
-          </row>
-        </thead>
-        <tbody>
-          <row>
-      <entry><filename>$XDG_CONFIG_HOME/systemd/user</filename></entry>
-      <entry>User configuration (only used when $XDG_CONFIG_HOME is set)</entry>
-          </row>
-          <row>
-      <entry><filename>$HOME/.config/systemd/user</filename></entry>
-      <entry>User configuration (only used when $XDG_CONFIG_HOME is not set)</entry>
-          </row>
-          <row>
-      <entry><filename>/etc/systemd/user</filename></entry>
-      <entry>Local configuration</entry>
-          </row>
-          <row>
-      <entry><filename>$XDG_RUNTIME_DIR/systemd/user</filename></entry>
-      <entry>Runtime units (only used when $XDG_RUNTIME_DIR is set)</entry>
-          </row>
-          <row>
-      <entry><filename>/run/systemd/user</filename></entry>
-      <entry>Runtime units</entry>
-          </row>
-          <row>
-      <entry><filename>$XDG_DATA_HOME/systemd/user</filename></entry>
-      <entry>Units of packages that have been installed in the home directory (only used when $XDG_DATA_HOME is set)</entry>
-          </row>
-          <row>
-      <entry><filename>$HOME/.local/share/systemd/user</filename></entry>
-      <entry>Units of packages that have been installed in the home directory (only used when $XDG_DATA_HOME is not set)</entry>
-          </row>
-          <row>
-      <entry><filename>/usr/lib/systemd/user</filename></entry>
-      <entry>Units of packages that have been installed system-wide</entry>
           </row>
         </tbody>
       </tgroup>
@@ -1271,8 +1212,7 @@
     when systemd is running in system mode. PID 1 cannot query the
     user account database for information, so the specifiers only work
     as shortcuts for things which are already specified in a different
-    way in the unit file. They are fully functional when systemd is
-    running in <option>--user</option> mode.</para>
+    way in the unit file.</para>
   </refsect1>
 
   <refsect1>
@@ -1337,10 +1277,6 @@ ExecStart=/usr/sbin/foo-daemon
       e.g. <varname>ExecStart=</varname> in service units), one needs
       to first clear the list before re-adding all entries except the
       one that is to be removed. See below for an example.</para>
-
-      <para>This also applies for user instances of systemd, but with
-      different locations for the unit files. See the section on unit
-      load paths for further details.</para>
 
       <para>Suppose there is a vendor-supplied unit
       <filename>/usr/lib/systemd/system/httpd.service</filename> with

@@ -188,12 +188,6 @@
     <para>The following options are understood:</para>
 
     <variablelist>
-      <varlistentry>
-        <term><option>--user</option></term>
-
-        <listitem><para>Operates on the user systemd
-        instance.</para></listitem>
-      </varlistentry>
 
       <varlistentry>
         <term><option>--system</option></term>

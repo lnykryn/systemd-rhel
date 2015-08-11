@@ -68,7 +68,6 @@ static void help(void) {
                "specified with --unit option then command can be ommited.\n\n"
                "  -h --help                       Show this help\n"
                "     --version                    Show package version\n"
-               "     --user                       Run as user unit\n"
                "  -H --host=[USER@]HOST           Operate on remote host\n"
                "  -M --machine=CONTAINER          Operate on local container\n"
                "     --scope                      Run this as scope rather than service\n"

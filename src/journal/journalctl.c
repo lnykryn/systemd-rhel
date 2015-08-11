@@ -204,7 +204,6 @@ static void help(void) {
                "     --list-boots          Show terse information about recorded boots\n"
                "  -k --dmesg               Show kernel message log from the current boot\n"
                "  -u --unit=UNIT           Show logs from the specified unit\n"
-               "     --user-unit=UNIT      Show logs from the specified user unit\n"
                "  -t --identifier=STRING   Show entries with the specified syslog identifier\n"
                "  -p --priority=RANGE      Show entries with the specified priority\n"
                "  -e --pager-end           Immediately jump to the end in the pager\n"

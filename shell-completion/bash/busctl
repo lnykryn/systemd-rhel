@@ -75,7 +75,7 @@ _busctl() {
         local i verb comps mode
         local cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
         local -A OPTS=(
-               [STANDALONE]='-h --help --version --no-pager --no-legend --system --user
+               [STANDALONE]='-h --help --version --no-pager --no-legend --system
                              --show-machine --unique --acquired --activatable --list
                              --quiet --verbose --expect-reply=no --auto-start=no
                              --allow-interactive-authorization=yes --augment-creds=no'

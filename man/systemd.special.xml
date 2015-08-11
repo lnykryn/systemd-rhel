@@ -773,47 +773,6 @@
   </refsect1>
 
   <refsect1>
-    <title>Special User Units</title>
-
-    <para>When systemd runs as a user instance, the following special
-    units are available, which have similar definitions as their
-    system counterparts:
-    <filename>default.target</filename>,
-    <filename>shutdown.target</filename>,
-    <filename>sockets.target</filename>,
-    <filename>timers.target</filename>,
-    <filename>paths.target</filename>,
-    <filename>bluetooth.target</filename>,
-    <filename>printer.target</filename>,
-    <filename>smartcard.target</filename>,
-    <filename>sound.target</filename>.</para>
-
-    <para>In addition, the following special unit is understood only
-    when systemd runs as service instance:</para>
-
-    <variablelist>
-      <varlistentry>
-        <term><filename>exit.target</filename></term>
-        <listitem>
-          <para>A special service unit for shutting down the user
-          service manager.</para>
-
-          <para>Applications wanting to terminate the user service
-          manager should start this unit. If systemd receives
-          <constant>SIGTERM</constant> or <constant>SIGINT</constant>
-          when running as user service daemon, it will start this
-          unit.</para>
-
-          <para>Normally, this pulls in
-          <filename>shutdown.target</filename> which in turn should be
-          conflicted by all units that want to be shut down on user
-          service manager exit.</para>
-        </listitem>
-      </varlistentry>
-    </variablelist>
-  </refsect1>
-
-  <refsect1>
     <title>Special Slice Units</title>
 
     <para>There are four <literal>.slice</literal> units which form
@@ -841,9 +800,8 @@
       <varlistentry>
         <term><filename>user.slice</filename></term>
         <listitem>
-          <para>By default, all user processes and services started on
-          behalf of the user, including the per-user systemd instance
-          are found in this slice.</para>
+          <para>By default, all user processes started on
+          behalf of the user are found in this slice.</para>
         </listitem>
       </varlistentry>
 

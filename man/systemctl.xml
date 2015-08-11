@@ -339,7 +339,6 @@
         </listitem>
       </varlistentry>
 
-      <xi:include href="user-system-options.xml" xpointer="user" />
       <xi:include href="user-system-options.xml" xpointer="system" />
 
       <!-- we do not document -failed here, as it has been made
@@ -353,17 +352,6 @@
         <listitem>
           <para>Do not send wall message before halt, power-off,
           reboot.</para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term><option>--global</option></term>
-
-        <listitem>
-          <para>When used with <command>enable</command> and
-          <command>disable</command>, operate on the global user
-          configuration directory, thus enabling or disabling a unit
-          file globally for all future logins of all users.</para>
         </listitem>
       </varlistentry>
 
@@ -795,9 +783,7 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             lines to fit in the terminal window. This can be changes
             with <option>--lines</option> and <option>--full</option>,
             see above. In addition, <command>journalctl
-            --unit=<replaceable>NAME</replaceable></command> or
-            <command>journalctl
-            --user-unit=<replaceable>NAME</replaceable></command> use
+            --unit=<replaceable>NAME</replaceable></command> use
             a similar filter for messages and might be more
             convenient.
             </para>
@@ -973,13 +959,8 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             process (in case of service units), or binds the socket (in
             case of socket units), and so on.</para>
 
-            <para>Depending on whether <option>--system</option>,
-            <option>--user</option>, <option>--runtime</option>,
-            or <option>--global</option> is specified, this enables the unit
-            for the system, for the calling user only, for only this boot of
-            the system, or for all future logins of all users, or only this
-            boot.  Note that in the last case, no systemd daemon
-            configuration is reloaded.</para>
+            <para> If <option>--runtime</option> is specified, then
+            this enables the unit only this boot. </para>
 
             <para>Using <command>enable</command> on masked units
             results in an error.</para>
@@ -1008,10 +989,8 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             output may be suppressed by passing <option>--quiet</option>.
             </para>
 
-            <para>This command honors <option>--system</option>,
-            <option>--user</option>, <option>--runtime</option> and
-            <option>--global</option> in a similar way as
-            <command>enable</command>.</para>
+            <para>This command honors <option>--runtime</option>
+            in a similar way as <command>enable</command>.</para>
           </listitem>
         </varlistentry>
 
@@ -1188,10 +1167,8 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             dependency to the specified <replaceable>TARGET</replaceable> for
             one or more units. </para>
 
-            <para>This command honors <option>--system</option>,
-            <option>--user</option>, <option>--runtime</option> and
-            <option>--global</option> in a similar way as
-            <command>enable</command>.</para>
+            <para>This command honors <option>--runtime</option>
+            in a similar way as <command>enable</command>.</para>
 
           </listitem>
         </varlistentry>
@@ -1204,11 +1181,8 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             <option>--full</option> is specified, to extend or override the
             specified unit.</para>
 
-            <para>Depending on whether <option>--system</option> (the default),
-            <option>--user</option>, or <option>--global</option> is specified,
-            this creates a drop-in file for each unit either for the system,
-            for the calling user or for all futures logins of all users. Then,
-            the editor (see the "Environment" section below) is invoked on
+            <para>This creates a drop-in file for a unit.
+            Then, the editor (see the "Environment" section below) is invoked on
             temporary files which will be written to the real location if the
             editor exits successfully.</para>
 
@@ -1593,17 +1567,6 @@ kobject-uevent 1 systemd-udevd-kernel.socket systemd-udevd.service
             services is skipped, however all processes are killed and
             all file systems are unmounted or mounted read-only,
             immediately followed by the reboot.</para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term><command>exit</command></term>
-
-          <listitem>
-            <para>Ask the systemd manager to quit. This is only
-            supported for user service managers (i.e. in conjunction
-            with the <option>--user</option> option) and will fail
-            otherwise.</para>
           </listitem>
         </varlistentry>
 

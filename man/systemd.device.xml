@@ -97,11 +97,9 @@
     <variablelist class='udev-directives'>
       <varlistentry>
         <term><varname>SYSTEMD_WANTS=</varname></term>
-        <term><varname>SYSTEMD_USER_WANTS=</varname></term>
         <listitem><para>Adds dependencies of type
         <varname>Wants</varname> from the device unit to all listed
-        units. The first form is used by the system systemd instance,
-        the second by user systemd instances. Those settings may be
+        units. This settings may be
         used to activate arbitrary units when a specific device
         becomes available.</para>
 

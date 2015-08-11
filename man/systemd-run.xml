@@ -294,7 +294,6 @@
         <command>set-property</command> command.</para> </listitem>
       </varlistentry>
 
-      <xi:include href="user-system-options.xml" xpointer="user" />
       <xi:include href="user-system-options.xml" xpointer="system" />
       <xi:include href="user-system-options.xml" xpointer="host" />
       <xi:include href="user-system-options.xml" xpointer="machine" />

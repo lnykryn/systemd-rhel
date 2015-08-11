@@ -6050,7 +6050,6 @@ static void systemctl_help(void) {
                "  -h --help           Show this help\n"
                "     --version        Show package version\n"
                "     --system         Connect to system manager\n"
-               "     --user           Connect to user service manager\n"
                "  -H --host=[USER@]HOST\n"
                "                      Operate on remote host\n"
                "  -M --machine=CONTAINER\n"

@@ -49,7 +49,7 @@ _journalctl() {
                               --utc -x --catalog --no-full --force --dump-catalog
                               --flush'
                        [ARG]='-b --boot --this-boot -D --directory --file -F --field
-                              -o --output -u --unit --user-unit -p --priority'
+                              -o --output -u --unit -p --priority'
                 [ARGUNKNOWN]='-c --cursor --interval -n --lines --since --until
                               --after-cursor --verify-key --identifier
                               --root --machine'
@@ -79,9 +79,6 @@ _journalctl() {
                         ;;
                         --unit|-u)
                                 comps=$(journalctl -F '_SYSTEMD_UNIT' 2>/dev/null)
-                        ;;
-                        --user-unit)
-                                comps=$(journalctl -F '_SYSTEMD_USER_UNIT' 2>/dev/null)
                         ;;
                         *)
                                 return 0

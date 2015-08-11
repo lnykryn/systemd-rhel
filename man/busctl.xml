@@ -75,9 +75,8 @@
 
           <listitem><para>Connect to the bus specified by
           <replaceable>ADDRESS</replaceable> instead of using suitable
-          defaults for either the system or user bus (see
-          <option>--system</option> and <option>--user</option>
-          options).</para></listitem>
+          defaults for the system bus (see
+          <option>--system</option> option).</para></listitem>
       </varlistentry>
 
       <varlistentry>
@@ -236,7 +235,6 @@
         </listitem>
       </varlistentry>
 
-      <xi:include href="user-system-options.xml" xpointer="user" />
       <xi:include href="user-system-options.xml" xpointer="system" />
       <xi:include href="user-system-options.xml" xpointer="host" />
       <xi:include href="user-system-options.xml" xpointer="machine" />
