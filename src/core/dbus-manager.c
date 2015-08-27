@@ -734,7 +734,7 @@ static int method_start_transient_unit(sd_bus *bus, sd_bus_message *message, voi
         if (mode < 0)
                 return sd_bus_error_setf(error, SD_BUS_ERROR_INVALID_ARGS, "Job mode %s is invalid.", smode);
 
-        r = mac_selinux_access_check(message, "start", error);
+        r = mac_selinux_runtime_unit_access_check(message, "start", error);
         if (r < 0)
                 return r;
 
@@ -1092,7 +1092,7 @@ static int method_create_snapshot(sd_bus *bus, sd_bus_message *message, void *us
         assert(message);
         assert(m);
 
-        r = mac_selinux_access_check(message, "start", error);
+        r = mac_selinux_runtime_unit_access_check(message, "start", error);
         if (r < 0)
                 return r;
 
