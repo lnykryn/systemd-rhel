@@ -833,7 +833,7 @@ static void socket_apply_socket_options(Socket *s, int fd) {
 
         if (s->keep_alive_cnt) {
                 int value = s->keep_alive_cnt;
-                if (setsockopt(fd, SOL_SOCKET, TCP_KEEPCNT, &value, sizeof(value)) < 0)
+                if (setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &value, sizeof(value)) < 0)
                         log_unit_warning(UNIT(s)->id, "TCP_KEEPCNT failed: %m");
         }
 
