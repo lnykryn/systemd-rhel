@@ -73,7 +73,7 @@ _systemd_run() {
                          KillSignal= LimitCPU= LimitFSIZE= LimitDATA= LimitSTACK=
                          LimitCORE= LimitRSS= LimitNOFILE= LimitAS= LimitNPROC=
                          LimitMEMLOCK= LimitLOCKS= LimitSIGPENDING= LimitMSGQUEUE=
-                         LimitNICE= LimitRTPRIO= LimitRTTIME='
+                         LimitNICE= LimitRTPRIO= LimitRTTIME= PassEnvironment='
 
             COMPREPLY=( $(compgen -W '$comps' -- "$cur") )
             return 0

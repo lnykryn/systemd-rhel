@@ -1535,7 +1535,7 @@ int bus_append_unit_property_assignment(sd_bus_message *m, const char *assignmen
 
                 r = sd_bus_message_append(m, "v", "i", i);
 
-        } else if (streq(field, "Environment")) {
+        } else if (STR_IN_SET(field, "Environment", "PassEnvironment")) {
 
                 r = sd_bus_message_append(m, "v", "as", 1, eq);
 
