@@ -1256,6 +1256,34 @@ static int build_environment(
         return 0;
 }
 
+static int build_pass_environment(const ExecContext *c, char ***ret) {
+        _cleanup_strv_free_ char **pass_env = NULL;
+        size_t n_env = 0, n_bufsize = 0;
+        char **i;
+
+        STRV_FOREACH(i, c->pass_environment) {
+                _cleanup_free_ char *x = NULL;
+                char *v;
+
+                v = getenv(*i);
+                if (!v)
+                        continue;
+                x = strjoin(*i, "=", v, NULL);
+                if (!x)
+                        return -ENOMEM;
+                if (!GREEDY_REALLOC(pass_env, n_bufsize, n_env + 2))
+                        return -ENOMEM;
+                pass_env[n_env++] = x;
+                pass_env[n_env] = NULL;
+                x = NULL;
+        }
+
+        *ret = pass_env;
+        pass_env = NULL;
+
+        return 0;
+}
+
 static bool exec_needs_mount_namespace(
                 const ExecContext *context,
                 const ExecParameters *params,
@@ -1297,7 +1325,7 @@ static int exec_child(
                 char **files_env,
                 int *exit_status) {
 
-        _cleanup_strv_free_ char **our_env = NULL, **pam_env = NULL, **final_env = NULL, **final_argv = NULL;
+        _cleanup_strv_free_ char **our_env = NULL, **pass_env = NULL, **pam_env = NULL, **final_env = NULL, **final_argv = NULL;
         _cleanup_free_ char *mac_selinux_context_net = NULL;
         const char *username = NULL, *home = NULL, *shell = NULL;
         unsigned n_dont_close = 0;
@@ -1805,9 +1833,16 @@ static int exec_child(
                 return r;
         }
 
-        final_env = strv_env_merge(5,
+        r = build_pass_environment(context, &pass_env);
+        if (r < 0) {
+                *exit_status = EXIT_MEMORY;
+                return r;
+        }
+
+        final_env = strv_env_merge(6,
                                    params->environment,
                                    our_env,
+                                   pass_env,
                                    context->environment,
                                    files_env,
                                    pam_env,
@@ -1965,6 +2000,8 @@ void exec_context_done(ExecContext *c) {
 
         strv_free(c->environment_files);
         c->environment_files = NULL;
+        strv_free(c->pass_environment);
+        c->pass_environment = NULL;
 
         for (l = 0; l < ELEMENTSOF(c->rlimit); l++) {
                 free(c->rlimit[l]);
@@ -2266,6 +2303,9 @@ void exec_context_dump(ExecContext *c, FILE* f, const char *prefix) {
 
         STRV_FOREACH(e, c->environment_files)
                 fprintf(f, "%sEnvironmentFile: %s\n", prefix, *e);
+
+        STRV_FOREACH(e, c->pass_environment)
+                fprintf(f, "%sPassEnvironment: %s\n", prefix, *e);
 
         if (c->nice_set)
                 fprintf(f,
