@@ -310,6 +310,39 @@ out:
         return parent;
 }
 
+static struct udev_device *handle_scsi_ata(struct udev_device *parent, char **path) {
+        struct udev *udev  = udev_device_get_udev(parent);
+        struct udev_device *targetdev;
+        struct udev_device *target_parent;
+        struct udev_device *atadev;
+        const char *port_no;
+
+        assert(parent);
+        assert(path);
+
+        targetdev = udev_device_get_parent_with_subsystem_devtype(parent, "scsi", "scsi_host");
+        if (!targetdev)
+                return NULL;
+
+        target_parent = udev_device_get_parent(targetdev);
+        if (!target_parent)
+                return NULL;
+
+        atadev = udev_device_new_from_subsystem_sysname(udev, "ata_port", udev_device_get_sysname(target_parent));
+        if (!atadev)
+                return NULL;
+
+        port_no = udev_device_get_sysattr_value(atadev, "port_no");
+        if (!port_no) {
+               parent = NULL;
+               goto out;
+        }
+        path_prepend(path, "ata-%s", port_no);
+out:
+        udev_device_unref(atadev);
+        return parent;
+}
+
 static struct udev_device *handle_scsi_default(struct udev_device *parent, char **path) {
         struct udev_device *hostdev;
         int host, bus, target, lun;
@@ -510,7 +543,7 @@ static struct udev_device *handle_scsi(struct udev_device *parent, bool enable_n
         }
 
         if (strstr(name, "/ata") != NULL) {
-                parent = handle_ata(parent, path);
+                parent = handle_scsi_ata(parent, path);
                 goto out;
         }
 
