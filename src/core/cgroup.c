@@ -40,6 +40,7 @@ void cgroup_context_init(CGroupContext *c) {
         c->memory_limit = (uint64_t) -1;
         c->blockio_weight = (unsigned long) -1;
         c->startup_blockio_weight = (unsigned long) -1;
+        c->tasks_max = (uint64_t) -1;
 
         c->cpu_quota_per_sec_usec = USEC_INFINITY;
 }
@@ -105,6 +106,7 @@ void cgroup_context_dump(CGroupContext *c, FILE* f, const char *prefix) {
                 "%sBlockIOWeight=%lu\n"
                 "%sStartupBlockIOWeight=%lu\n"
                 "%sMemoryLimit=%" PRIu64 "\n"
+                "%sTasksMax=%" PRIu64 "\n"
                 "%sDevicePolicy=%s\n"
                 "%sDelegate=%s\n",
                 prefix, yes_no(c->cpu_accounting),
@@ -116,6 +118,7 @@ void cgroup_context_dump(CGroupContext *c, FILE* f, const char *prefix) {
                 prefix, c->blockio_weight,
                 prefix, c->startup_blockio_weight,
                 prefix, c->memory_limit,
+                prefix, c->tasks_max,
                 prefix, cgroup_device_policy_to_string(c->device_policy),
                 prefix, yes_no(c->delegate));
 
@@ -456,6 +459,21 @@ void cgroup_context_apply(CGroupContext *c, CGroupControllerMask mask, const cha
                                 log_debug("Ignoring device %s while writing cgroup attribute.", a->path);
                 }
         }
+
+        if ((mask & CGROUP_PIDS) && !is_root) {
+
+                if (c->tasks_max != (uint64_t) -1) {
+                        char buf[DECIMAL_STR_MAX(uint64_t) + 2];
+
+                        sprintf(buf, "%" PRIu64 "\n", c->tasks_max);
+                        r = cg_set_attribute("pids", path, "pids.max", buf);
+                } else
+                        r = cg_set_attribute("pids", path, "pids.max", "max");
+
+                if (r < 0)
+                        log_full_errno(IN_SET(r, -ENOENT, -EROFS) ? LOG_DEBUG : LOG_WARNING, r,
+                                       "Failed to set pids.max on %s: %m", path);
+        }
 }
 
 CGroupControllerMask cgroup_context_get_mask(CGroupContext *c) {
@@ -483,6 +501,10 @@ CGroupControllerMask cgroup_context_get_mask(CGroupContext *c) {
         if (c->device_allow ||
             c->device_policy != CGROUP_AUTO)
                 mask |= CGROUP_DEVICE;
+
+        if (c->tasks_accounting ||
+            c->tasks_max != (uint64_t) -1)
+                mask |= CGROUP_PIDS;
 
         return mask;
 }
@@ -1042,6 +1064,28 @@ int manager_notify_cgroup_empty(Manager *m, const char *cgroup) {
         }
 
         return 0;
+}
+
+int unit_get_tasks_current(Unit *u, uint64_t *ret) {
+        _cleanup_free_ char *v = NULL;
+        int r;
+
+        assert(u);
+       assert(ret);
+
+        if (!u->cgroup_path)
+                return -ENODATA;
+
+        if ((u->cgroup_realized_mask & CGROUP_PIDS) == 0)
+                return -ENODATA;
+
+        r = cg_get_attribute("pids", u->cgroup_path, "pids.current", &v);
+        if (r == -ENOENT)
+                return -ENODATA;
+        if (r < 0)
+                return r;
+
+        return safe_atou64(v, ret);
 }
 
 static const char* const cgroup_device_policy_table[_CGROUP_DEVICE_POLICY_MAX] = {

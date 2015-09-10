@@ -117,6 +117,7 @@ static bool arg_default_cpu_accounting = false;
 static bool arg_default_blockio_accounting = false;
 static bool arg_default_memory_accounting = false;
 static EmergencyAction arg_cad_burst_action = EMERGENCY_ACTION_REBOOT_FORCE;
+static bool arg_default_tasks_accounting = false;
 
 static void nop_handler(int sig) {}
 
@@ -676,6 +677,7 @@ static int parse_config_file(void) {
                 { "Manager", "DefaultBlockIOAccounting",  config_parse_bool,             0, &arg_default_blockio_accounting        },
                 { "Manager", "DefaultMemoryAccounting",   config_parse_bool,             0, &arg_default_memory_accounting         },
                 { "Manager", "CtrlAltDelBurstAction",     config_parse_emergency_action, 0, &arg_cad_burst_action                  },
+                { "Manager", "DefaultTasksAccounting",    config_parse_bool,             0, &arg_default_tasks_accounting          },
                 {}
         };
 
@@ -1685,6 +1687,7 @@ int main(int argc, char *argv[]) {
         m->default_cpu_accounting = arg_default_cpu_accounting;
         m->default_blockio_accounting = arg_default_blockio_accounting;
         m->default_memory_accounting = arg_default_memory_accounting;
+        m->default_tasks_accounting = arg_default_tasks_accounting;
         m->runtime_watchdog = arg_runtime_watchdog;
         m->shutdown_watchdog = arg_shutdown_watchdog;
 
