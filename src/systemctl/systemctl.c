@@ -3280,6 +3280,8 @@ typedef struct UnitStatusInfo {
         /* CGroup */
         uint64_t memory_current;
         uint64_t memory_limit;
+        uint64_t tasks_current;
+        uint64_t tasks_max;
 
         LIST_HEAD(ExecStatusInfo, exec);
 } UnitStatusInfo;
@@ -3539,6 +3541,15 @@ static void print_status_info(
         if (i->status_errno > 0)
                 printf("    Error: %i (%s)\n", i->status_errno, strerror(i->status_errno));
 
+        if (i->tasks_current != (uint64_t) -1) {
+                printf("    Tasks: %" PRIu64, i->tasks_current);
+
+                if (i->tasks_max != (uint64_t) -1)
+                        printf(" (limit: %" PRIi64 ")\n", i->tasks_max);
+                else
+                        printf("\n");
+        }
+
         if (i->memory_current != (uint64_t) -1) {
                 char buf[FORMAT_BYTES_MAX];
 
@@ -3768,6 +3779,10 @@ static int status_property(const char *name, sd_bus_message *m, UnitStatusInfo *
                         i->memory_current = u;
                 else if (streq(name, "MemoryLimit"))
                         i->memory_limit = u;
+                else if (streq(name, "TasksCurrent"))
+                        i->tasks_current = u;
+                else if (streq(name, "TasksMax"))
+                        i->tasks_max = u;
 
                 break;
         }
@@ -4248,6 +4263,8 @@ static int show_one(
         UnitStatusInfo info = {
                 .memory_current = (uint64_t) -1,
                 .memory_limit = (uint64_t) -1,
+                .tasks_current = (uint64_t) -1,
+                .tasks_max = (uint64_t) -1,
         };
         ExecStatusInfo *p;
         int r;
