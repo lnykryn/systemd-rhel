@@ -619,18 +619,6 @@ CHANGES WITH 217:
           systemd-ask-password gained a new --echo option to turn that
           on.
 
-        * The default sysctl.d/ snippets will now set:
-
-                net.core.default_qdisc = fq_codel
-
-          This selects Fair Queuing Controlled Delay as the default
-          queuing discipline for network interfaces. fq_codel helps
-          fight the network bufferbloat problem. It is believed to be
-          a good default with no tuning required for most workloads.
-          Downstream distributions may override this choice. On 10Gbit
-          servers that do not do forwarding, "fq" may perform better.
-          Systems without a good clocksource should use "pfifo_fast".
-
         * If kdbus is enabled during build a new option BusPolicy= is
           available for service units, that allows locking all service
           processes into a stricter bus policy, in order to limit
