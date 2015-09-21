@@ -5829,7 +5829,8 @@ systemd_user_sessions_SOURCES = \
 	src/login/user-sessions.c
 
 systemd_user_sessions_LDADD = \
-	libsystemd-shared.la
+	libsystemd-shared.la \
+	libsystemd-label.la
 
 rootlibexec_PROGRAMS += \
 	systemd-logind \
