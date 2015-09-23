@@ -39,6 +39,8 @@
 #include "utmp-wtmp.h"
 #include "mkdir.h"
 #include "fileio.h"
+#include "selinux-util.h"
+#include "fileio-label.h"
 
 union shutdown_buffer {
         struct sd_shutdown_command command;
@@ -278,6 +280,8 @@ int main(int argc, char *argv[]) {
 
         umask(0022);
 
+        mac_selinux_init(NULL);
+
         n_fds = sd_listen_fds(true);
         if (n_fds < 0) {
                 log_error_errno(r, "Failed to read listening file descriptors from environment: %m");
@@ -404,7 +408,7 @@ int main(int argc, char *argv[]) {
 
                         log_info("Creating /run/nologin, blocking further logins...");
 
-                        e = write_string_file_atomic("/run/nologin", "System is going down.");
+                        e = write_string_file_atomic_label("/run/nologin", "System is going down.");
                         if (e < 0)
                                 log_error_errno(e, "Failed to create /run/nologin: %m");
                         else
@@ -432,6 +436,8 @@ finish:
                 unlink("/run/nologin");
 
         unlink("/run/systemd/shutdown/scheduled");
+
+        mac_selinux_finish();
 
         if (exec_shutdown && !b.command.dry_run) {
                 char sw[3];
