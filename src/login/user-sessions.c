@@ -26,6 +26,7 @@
 #include "log.h"
 #include "util.h"
 #include "fileio.h"
+#include "fileio-label.h"
 #include "selinux-util.h"
 
 int main(int argc, char*argv[]) {
