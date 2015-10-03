@@ -210,7 +210,8 @@
         and use the smaller of the two values.</para>
 
         <para>The first pair defaults to 10% and the second to 15% of
-        the size of the respective file system. If the file system is
+        the size of the respective file system, but each value
+        is capped to 4G. If the file system is
         nearly full and either <varname>SystemKeepFree=</varname> or
         <varname>RuntimeKeepFree=</varname> is violated when
         systemd-journald is started, the value will be raised to
