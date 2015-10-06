@@ -2220,7 +2220,8 @@ dist_tmpfiles_DATA = \
 	tmpfiles.d/systemd-nologin.conf \
 	tmpfiles.d/tmp.conf \
 	tmpfiles.d/x11.conf \
-	tmpfiles.d/var.conf
+	tmpfiles.d/var.conf \
+	tmpfiles.d/sap.conf
 
 if HAVE_SYSV_COMPAT
 dist_tmpfiles_DATA += \
