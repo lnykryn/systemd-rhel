@@ -1131,13 +1131,23 @@ static int unit_add_mount_dependencies(Unit *u) {
                 char prefix[strlen(*i) + 1];
 
                 PATH_FOREACH_PREFIX_MORE(prefix, *i) {
+                        _cleanup_free_ char *p = NULL;
                         Unit *m;
 
-                        r = manager_get_unit_by_path(u->manager, prefix, ".mount", &m);
-                        if (r < 0)
-                                return r;
-                        if (r == 0)
+                        p = unit_name_from_path(prefix, ".mount");
+                        if (!p)
+                                return -ENOMEM;
+
+                        m = manager_get_unit(u->manager, p);
+                        if (!m) {
+                                /* Make sure to load the mount unit if
+                                 * it exists. If so the dependencies
+                                 * on this unit will be added later
+                                 * during the loading of the mount
+                                 * unit. */
+                                (void) manager_load_unit_prepare(u->manager, p, NULL, NULL, &m);
                                 continue;
+                        }
                         if (m == u)
                                 continue;
 
