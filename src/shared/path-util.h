@@ -63,6 +63,33 @@ bool paths_check_timestamp(const char* const* paths, usec_t *paths_ts_usec, bool
 
 int fsck_exists(const char *fstype);
 
+char *prefix_root(const char *root, const char *path);
+
+/* Similar to prefix_root(), but returns an alloca() buffer, or
+ * possibly a const pointer into the path parameter */
+#define prefix_roota(root, path)                                        \
+        ({                                                              \
+                const char* _path = (path), *_root = (root), *_ret;     \
+                char *_p, *_n;                                          \
+                size_t _l;                                              \
+                while (_path[0] == '/' && _path[1] == '/')              \
+                        _path ++;                                       \
+                if (isempty(_root) || path_equal(_root, "/"))           \
+                        _ret = _path;                                   \
+                else {                                                  \
+                        _l = strlen(_root) + 1 + strlen(_path) + 1;     \
+                        _n = alloca(_l);                                \
+                        _p = stpcpy(_n, _root);                         \
+                        while (_p > _n && _p[-1] == '/')                \
+                                _p--;                                   \
+                        if (_path[0] != '/')                            \
+                                *(_p++) = '/';                          \
+                        strcpy(_p, _path);                              \
+                        _ret = _n;                                      \
+                }                                                       \
+                _ret;                                                   \
+        })
+
 /* Iterates through the path prefixes of the specified path, going up
  * the tree, to root. Also returns "" (and not "/"!) for the root
  * directory. Excludes the specified directory itself */

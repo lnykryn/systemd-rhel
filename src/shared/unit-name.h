@@ -107,6 +107,13 @@ enum UnitDependency {
         _UNIT_DEPENDENCY_INVALID = -1
 };
 
+typedef enum UnitNameFlags {
+        UNIT_NAME_PLAIN = 1,      /* Allow foo.service */
+        UNIT_NAME_INSTANCE = 2,   /* Allow foo@bar.service */
+        UNIT_NAME_TEMPLATE = 4,   /* Allow foo@.service */
+        UNIT_NAME_ANY = UNIT_NAME_PLAIN|UNIT_NAME_INSTANCE|UNIT_NAME_TEMPLATE,
+} UnitNameFlags;
+
 const char *unit_type_to_string(UnitType i) _const_;
 UnitType unit_type_from_string(const char *s) _pure_;
 
@@ -117,12 +124,7 @@ int unit_name_to_instance(const char *n, char **instance);
 char* unit_name_to_prefix(const char *n);
 char* unit_name_to_prefix_and_instance(const char *n);
 
-enum template_valid {
-        TEMPLATE_INVALID,
-        TEMPLATE_VALID,
-};
-
-bool unit_name_is_valid(const char *n, enum template_valid template_ok) _pure_;
+bool unit_name_is_valid(const char *n, UnitNameFlags flags) _pure_;
 bool unit_prefix_is_valid(const char *p) _pure_;
 bool unit_instance_is_valid(const char *i) _pure_;
 
