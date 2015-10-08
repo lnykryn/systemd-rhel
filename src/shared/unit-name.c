@@ -63,16 +63,13 @@ static const char* const unit_load_state_table[_UNIT_LOAD_STATE_MAX] = {
 
 DEFINE_STRING_TABLE_LOOKUP(unit_load_state, UnitLoadState);
 
-bool unit_name_is_valid(const char *n, enum template_valid template_ok) {
+bool unit_name_is_valid(const char *n, UnitNameFlags flags) {
         const char *e, *i, *at;
 
-        /* Valid formats:
-         *
-         *         string@instance.suffix
-         *         string.suffix
-         */
+        assert((flags & ~(UNIT_NAME_PLAIN|UNIT_NAME_INSTANCE|UNIT_NAME_TEMPLATE)) == 0);
 
-        assert(IN_SET(template_ok, TEMPLATE_VALID, TEMPLATE_INVALID));
+        if (_unlikely_(flags == 0))
+                return false;
 
         if (isempty(n))
                 return false;
@@ -96,15 +93,22 @@ bool unit_name_is_valid(const char *n, enum template_valid template_ok) {
                         return false;
         }
 
-        if (at) {
-                if (at == n)
-                        return false;
+        if (at == n)
+                return false;
 
-                if (template_ok != TEMPLATE_VALID && at+1 == e)
-                        return false;
-        }
+        if (flags & UNIT_NAME_PLAIN)
+                if (!at)
+                        return true;
 
-        return true;
+        if (flags & UNIT_NAME_INSTANCE)
+                if (at && e > at + 1)
+                        return true;
+
+        if (flags & UNIT_NAME_TEMPLATE)
+                if (at && e == at + 1)
+                        return true;
+
+        return false;
 }
 
 bool unit_instance_is_valid(const char *i) {

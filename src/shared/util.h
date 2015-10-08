@@ -281,6 +281,7 @@ int readlink_malloc(const char *p, char **r);
 int readlink_value(const char *p, char **ret);
 int readlink_and_make_absolute(const char *p, char **r);
 int readlink_and_canonicalize(const char *p, char **r);
+int readlink_and_make_absolute_root(const char *root, const char *path, char **ret);
 
 int reset_all_signal_handlers(void);
 int reset_signal_mask(void);

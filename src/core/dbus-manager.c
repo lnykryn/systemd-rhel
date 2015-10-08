@@ -1530,9 +1530,9 @@ static int method_get_unit_file_state(sd_bus *bus, sd_bus_message *message, void
 
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
-        state = unit_file_get_state(scope, NULL, name);
-        if (state < 0)
-                return state;
+        r = unit_file_get_state(scope, NULL, name, &state);
+        if (r < 0)
+                return r;
 
         return sd_bus_reply_method_return(message, "s", unit_file_state_to_string(state));
 }

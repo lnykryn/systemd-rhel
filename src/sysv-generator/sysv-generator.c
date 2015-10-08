@@ -712,6 +712,7 @@ static int fix_order(SysvStub *s, Hashmap *all_services) {
 
 static int enumerate_sysv(const LookupPaths *lp, Hashmap *all_services) {
         char **path;
+        int r;
 
         STRV_FOREACH(path, lp->sysvinit_path) {
                 _cleanup_closedir_ DIR *d = NULL;
@@ -728,7 +729,6 @@ static int enumerate_sysv(const LookupPaths *lp, Hashmap *all_services) {
                         _cleanup_free_ char *fpath = NULL, *name = NULL;
                         _cleanup_free_ SysvStub *service = NULL;
                         struct stat st;
-                        int r;
 
                         if (hidden_file(de->d_name))
                                 continue;
@@ -755,8 +755,12 @@ static int enumerate_sysv(const LookupPaths *lp, Hashmap *all_services) {
                         if (!fpath)
                                 return log_oom();
 
-                        if (unit_file_lookup_state(UNIT_FILE_SYSTEM, NULL, lp, name) >= 0) {
-                                log_debug("Native unit for %s already exists, skipping", name);
+                        r = unit_file_lookup_state(UNIT_FILE_SYSTEM, NULL, lp, name, NULL);
+                        if (r < 0 && r != -ENOENT) {
+                                log_debug_errno(r, "Failed to detect whether %s exists, skipping: %m", name);
+                                continue;
+                        } else if (r >= 0) {
+                                log_debug("Native unit for %s already exists, skipping.", name);
                                 continue;
                         }
 

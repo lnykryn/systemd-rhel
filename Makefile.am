@@ -1427,7 +1427,8 @@ tests += \
 	test-copy \
 	test-cap-list \
 	test-sigbus \
-	test-verbs
+	test-verbs \
+	test-install-root
 
 EXTRA_DIST += \
 	test/a.service \
@@ -1719,6 +1720,15 @@ test_verbs_SOURCES = \
 	src/test/test-verbs.c
 
 test_verbs_LDADD = \
+	libsystemd-shared.la
+
+test_install_root_SOURCES = \
+	src/test/test-install-root.c
+
+test_install_root_LDADD = \
+	libsystemd-units.la \
+	libsystemd-label.la \
+	libsystemd-internal.la \
 	libsystemd-shared.la
 
 test_namespace_LDADD = \

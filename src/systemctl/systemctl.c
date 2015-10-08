@@ -1304,7 +1304,7 @@ static void output_unit_file_list(const UnitFileList *units, unsigned c) {
                 if (u->state == UNIT_FILE_MASKED ||
                     u->state == UNIT_FILE_MASKED_RUNTIME ||
                     u->state == UNIT_FILE_DISABLED ||
-                    u->state == UNIT_FILE_INVALID) {
+                    u->state == UNIT_FILE_BAD) {
                         on  = ansi_highlight_red();
                         off = ansi_highlight_off();
                 } else if (u->state == UNIT_FILE_ENABLED) {
@@ -5637,8 +5637,8 @@ static int unit_is_enabled(sd_bus *bus, char **args) {
                 STRV_FOREACH(name, names) {
                         UnitFileState state;
 
-                        state = unit_file_get_state(arg_scope, arg_root, *name);
-                        if (state < 0)
+                        r = unit_file_get_state(arg_scope, arg_root, *name, &state);
+                        if (r < 0)
                                 return log_error_errno(state, "Failed to get unit file state for %s: %m", *name);
 
                         if (state == UNIT_FILE_ENABLED ||

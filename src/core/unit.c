@@ -158,7 +158,7 @@ int unit_add_name(Unit *u, const char *text) {
         if (!s)
                 return -ENOMEM;
 
-        if (!unit_name_is_valid(s, TEMPLATE_INVALID))
+        if (!unit_name_is_valid(s, UNIT_NAME_PLAIN|UNIT_NAME_INSTANCE))
                 return -EINVAL;
 
         assert_se((t = unit_name_to_type(s)) >= 0);
@@ -3119,12 +3119,18 @@ int unit_following_set(Unit *u, Set **s) {
 }
 
 UnitFileState unit_get_unit_file_state(Unit *u) {
+        int r;
+
         assert(u);
 
-        if (u->unit_file_state < 0 && u->fragment_path)
-                u->unit_file_state = unit_file_get_state(
-                                u->manager->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER,
-                                NULL, basename(u->fragment_path));
+        if (u->unit_file_state < 0 && u->fragment_path) {
+                r = unit_file_get_state(u->manager->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER,
+                                        NULL,
+                                        basename(u->fragment_path),
+                                        &u->unit_file_state);
+                if (r < 0)
+                        u->unit_file_state = UNIT_FILE_BAD;
+        }
 
         return u->unit_file_state;
 }
@@ -3135,7 +3141,8 @@ int unit_get_unit_file_preset(Unit *u) {
         if (u->unit_file_preset < 0 && u->fragment_path)
                 u->unit_file_preset = unit_file_query_preset(
                                 u->manager->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER,
-                                NULL, basename(u->fragment_path));
+                                NULL,
+                                basename(u->fragment_path));
 
         return u->unit_file_preset;
 }
