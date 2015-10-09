@@ -281,14 +281,29 @@ out:
 
 static int names_pci(struct udev_device *dev, struct netnames *names) {
         struct udev_device *parent;
+        static int do_virtio = -1;
+
+        if (do_virtio < 0) {
+                _cleanup_free_ char *value = NULL;
+                int n = 0;
+                do_virtio = 0;
+                if (get_proc_cmdline_key("net.ifnames", NULL) > 0)
+                        do_virtio = 1;
+                else if (get_proc_cmdline_key("net.ifnames=", &value) > 0) {
+                        safe_atoi(value, &n);
+                        if (n > 0)
+                                do_virtio = 1;
+                }
+        }
 
         parent = udev_device_get_parent(dev);
 
         /* there can only ever be one virtio bus per parent device, so we can
            safely ignore any virtio buses. see
            <http://lists.linuxfoundation.org/pipermail/virtualization/2015-August/030331.html> */
-        while (parent && streq_ptr("virtio", udev_device_get_subsystem(parent)))
-                parent = udev_device_get_parent(parent);
+        if (do_virtio > 0)
+                while (parent && streq_ptr("virtio", udev_device_get_subsystem(parent)))
+                        parent = udev_device_get_parent(parent);
 
         if (!parent)
                 return -ENOENT;

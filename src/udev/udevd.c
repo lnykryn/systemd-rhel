@@ -1003,10 +1003,10 @@ static void kernel_cmdline_options(struct udev *udev) {
                         r = safe_atou64(value, &arg_event_timeout_usec);
                         if (r < 0) {
                                 log_warning("Invalid udev.event-timeout ignored: %s", value);
-                                break;
+                        } else {
+                                arg_event_timeout_usec *= USEC_PER_SEC;
+                                arg_event_timeout_warn_usec = (arg_event_timeout_usec / 3) ? : 1;
                         }
-                        arg_event_timeout_usec *= USEC_PER_SEC;
-                        arg_event_timeout_warn_usec = (arg_event_timeout_usec / 3) ? : 1;
                 }
 
                 free(s);
