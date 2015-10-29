@@ -1069,7 +1069,7 @@ int config_parse_bounding_set(const char *unit,
                            "Trailing garbage, ignoring.");
 
         capability_bounding_set = invert ? ~sum : sum;
-        if (*capability_bounding_set_drop)
+        if (*capability_bounding_set_drop && capability_bounding_set)
                 *capability_bounding_set_drop = ~(~*capability_bounding_set_drop | capability_bounding_set);
         else
                 *capability_bounding_set_drop = ~capability_bounding_set;
