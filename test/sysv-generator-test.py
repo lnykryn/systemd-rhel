@@ -224,21 +224,27 @@ class SysvGeneratorTest(unittest.TestCase):
                               'Should-Start': 'may1 ne_may2'},
                       enable=True, prio=40)
         self.add_sysv('must1', {}, enable=True, prio=10)
+        self.add_sysv('prio10', {}, enable=True, prio=10)
+        self.add_sysv('prio11', {}, enable=True, prio=11)
         self.add_sysv('must2', {}, enable=True, prio=15)
         self.add_sysv('may1', {}, enable=True, prio=20)
         # do not create ne_may2
         err, results = self.run_generator()
         self.assertEqual(sorted(results),
-                         ['foo.service', 'may1.service', 'must1.service', 'must2.service'])
+                         ['foo.service', 'may1.service', 'must1.service', 'must2.service', 'prio10.service', 'prio11.service'])
 
         # foo should depend on all of them
+        print results['foo.service'].get('Unit', 'After')
         self.assertEqual(sorted(results['foo.service'].get('Unit', 'After').split()),
-                         ['may1.service', 'must1.service', 'must2.service', 'ne_may2.service'])
+                         ['may1.service', 'must1.service', 'must2.service', 'ne_may2.service', 'network-online.target'])
 
+        # from prio 10 network-online.target is default dependency (src/sysv-generator/sysv-generator.c)
+        self.assertEqual(sorted(results['must2.service'].get('Unit', 'After').split()), ['network-online.target'])
+        self.assertEqual(sorted(results['may1.service'].get('Unit', 'After').split()), ['network-online.target'])
+        self.assertEqual(sorted(results['prio11.service'].get('Unit', 'After').split()), ['network-online.target'])
         # other services should not depend on each other
         self.assertFalse(results['must1.service'].has_option('Unit', 'After'))
-        self.assertFalse(results['must2.service'].has_option('Unit', 'After'))
-        self.assertFalse(results['may1.service'].has_option('Unit', 'After'))
+        self.assertFalse(results['prio10.service'].has_option('Unit', 'After'))
 
     def test_symlink_prio_deps(self):
         '''script without LSB headers use rcN.d priority'''
@@ -258,8 +264,8 @@ class SysvGeneratorTest(unittest.TestCase):
         err, results = self.run_generator()
         self.assertEqual(sorted(results), ['consumer.service', 'provider.service'])
         self.assertFalse(results['provider.service'].has_option('Unit', 'After'))
-        self.assertEqual(results['consumer.service'].get('Unit', 'After'),
-                         'provider.service')
+        self.assertEqual(results['consumer.service'].get('Unit', 'After').split(),
+                         ['network-online.target', 'provider.service'])
 
     def test_multiple_provides(self):
         '''multiple Provides: names'''
