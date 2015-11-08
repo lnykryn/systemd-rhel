@@ -1477,6 +1477,10 @@ EXTRA_DIST += \
 	test/exec-environment-empty.service \
 	test/exec-environment-multiple.service \
 	test/exec-environment.service \
+	test/exec-passenvironment-absent.service \
+	test/exec-passenvironment-empty.service \
+	test/exec-passenvironment-repeated.service \
+	test/exec-passenvironment.service \
 	test/exec-group.service \
 	test/exec-ignoresigpipe-no.service \
 	test/exec-ignoresigpipe-yes.service \
