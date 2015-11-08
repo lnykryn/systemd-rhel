@@ -142,6 +142,19 @@ static void test_exec_environment(Manager *m) {
         test(m, "exec-environment-empty.service", 0, CLD_EXITED);
 }
 
+static void test_exec_passenvironment(Manager *m) {
+        assert_se(setenv("VAR1", "word1 word2", 1) == 0);
+        assert_se(setenv("VAR2", "word3", 1) == 0);
+        assert_se(setenv("VAR3", "$word 5 6", 1) == 0);
+        test(m, "exec-passenvironment.service", 0, CLD_EXITED);
+        test(m, "exec-passenvironment-repeated.service", 0, CLD_EXITED);
+        test(m, "exec-passenvironment-empty.service", 0, CLD_EXITED);
+        assert_se(unsetenv("VAR1") == 0);
+        assert_se(unsetenv("VAR2") == 0);
+        assert_se(unsetenv("VAR3") == 0);
+        test(m, "exec-passenvironment-absent.service", 0, CLD_EXITED);
+}
+
 static void test_exec_umask(Manager *m) {
         test(m, "exec-umask-default.service", 0, CLD_EXITED);
         test(m, "exec-umask-0177.service", 0, CLD_EXITED);
@@ -165,6 +178,7 @@ int main(int argc, char *argv[]) {
                 test_exec_user,
                 test_exec_group,
                 test_exec_environment,
+                test_exec_passenvironment,
                 test_exec_umask,
                 test_exec_runtimedirectory,
                 NULL,
