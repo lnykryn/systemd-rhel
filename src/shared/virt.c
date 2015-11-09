@@ -142,12 +142,14 @@ static int detect_vm_dmi(const char **_id) {
 #if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || defined(__aarch64__)
 
         static const char *const dmi_vendors[] = {
+                "/sys/class/dmi/id/product_name", /* Test this before sys_vendor to detect KVM over QEMU */
                 "/sys/class/dmi/id/sys_vendor",
                 "/sys/class/dmi/id/board_vendor",
                 "/sys/class/dmi/id/bios_vendor"
         };
 
         static const char dmi_vendor_table[] =
+                "KVM\0"                   "kvm\0"
                 "QEMU\0"                  "qemu\0"
                 /* http://kb.vmware.com/selfservice/microsites/search.do?language=en_US&cmd=displayKC&externalId=1009458 */
                 "VMware\0"                "vmware\0"
