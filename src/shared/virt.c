@@ -29,7 +29,7 @@
 
 static int detect_vm_cpuid(const char **_id) {
 
-        /* Both CPUID and DMI are x86 specific interfaces... */
+        /* CPUID is an x86 specific interface. */
 #if defined(__i386__) || defined(__x86_64__)
 
         static const char cpuid_vendor_table[] =
@@ -139,8 +139,7 @@ static int detect_vm_devicetree(const char **_id) {
 
 static int detect_vm_dmi(const char **_id) {
 
-        /* Both CPUID and DMI are x86 specific interfaces... */
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || defined(__aarch64__)
 
         static const char *const dmi_vendors[] = {
                 "/sys/class/dmi/id/sys_vendor",
