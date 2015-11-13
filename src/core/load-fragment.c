@@ -3081,12 +3081,11 @@ int config_parse_tasks_max(
                 void *data,
                 void *userdata) {
 
-        CGroupContext *c = data;
-        uint64_t u;
+        uint64_t *tasks_max = data, u;
         int r;
 
         if (isempty(rvalue) || streq(rvalue, "infinity")) {
-                c->tasks_max = (uint64_t) -1;
+                *tasks_max = (uint64_t) -1;
                 return 0;
         }
 
@@ -3095,6 +3094,8 @@ int config_parse_tasks_max(
                 log_syntax(unit, LOG_ERR, filename, line, EINVAL, "Maximum tasks value '%s' invalid. Ignoring.", rvalue);
                 return 0;
         }
+
+        *tasks_max = u;
 
         return 0;
 }
