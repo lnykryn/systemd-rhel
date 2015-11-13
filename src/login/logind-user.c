@@ -33,6 +33,7 @@
 #include "special.h"
 #include "unit-name.h"
 #include "bus-util.h"
+#include "bus-common-errors.h"
 #include "bus-error.h"
 #include "conf-parser.h"
 #include "clean-ipc.h"
@@ -367,34 +368,52 @@ fail:
 }
 
 static int user_start_slice(User *u) {
-        char *job;
         int r;
 
         assert(u);
 
         if (!u->slice) {
                 _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
-                char lu[DECIMAL_STR_MAX(uid_t) + 1], *slice;
-                sprintf(lu, UID_FMT, u->uid);
+                char lu[DECIMAL_STR_MAX(uid_t) + 1], *slice, *job;
+                const char *description;
 
+                free(u->slice_job);
+                u->slice_job = NULL;
+
+                xsprintf(lu, UID_FMT, u->uid);
                 r = build_subslice(SPECIAL_USER_SLICE, lu, &slice);
                 if (r < 0)
-                        return r;
+                        return log_error_errno(r, "Failed to build slice name: %m");
 
-                r = manager_start_unit(u->manager, slice, &error, &job);
+                description = strjoina("User Slice of ", u->name);
+
+                r = manager_start_slice(
+                                u->manager,
+                                slice,
+                                description,
+                                "systemd-logind.service",
+                                "systemd-user-sessions.service",
+                                u->manager->user_tasks_max,
+                                &error,
+                                &job);
                 if (r < 0) {
-                        log_error("Failed to start user slice: %s", bus_error_message(&error, r));
-                        free(slice);
+
+                        if (sd_bus_error_has_name(&error, BUS_ERROR_UNIT_EXISTS))
+                                /* The slice already exists? If so, that's fine, let's just reuse it */
+                                u->slice = slice;
+                        else {
+                                log_error_errno(r, "Failed to start user slice %s, ignoring: %s (%s)", slice, bus_error_message(&error, r), error.name);
+                                free(slice);
+                                /* we don't fail due to this, let's try to continue */
+                        }
                 } else {
                         u->slice = slice;
-
-                        free(u->slice_job);
                         u->slice_job = job;
                 }
         }
 
         if (u->slice)
-                hashmap_put(u->manager->user_units, u->slice, u);
+                (void) hashmap_put(u->manager->user_units, u->slice, u);
 
         return 0;
 }

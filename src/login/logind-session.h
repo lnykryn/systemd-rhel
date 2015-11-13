@@ -115,7 +115,8 @@ struct Session {
 
         bool in_gc_queue:1;
         bool started:1;
-        bool stopping:1;
+
+        bool stopping;
 
         sd_bus_message *create_message;
 

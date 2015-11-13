@@ -128,6 +128,7 @@ struct Manager {
         sd_event_source *lid_switch_ignore_event_source;
 
         size_t runtime_dir_size;
+        uint64_t user_tasks_max;
 };
 
 Manager *manager_new(void);
@@ -176,7 +177,8 @@ int manager_send_changed(Manager *manager, const char *property, ...) _sentinel_
 
 int manager_dispatch_delayed(Manager *manager);
 
-int manager_start_scope(Manager *manager, const char *scope, pid_t pid, const char *slice, const char *description, const char *after, const char *after2, sd_bus_error *error, char **job);
+int manager_start_slice(Manager *manager, const char *slice, const char *description, const char *after, const char *after2, uint64_t tasks_max, sd_bus_error *error, char **job);
+int manager_start_scope(Manager *manager, const char *scope, pid_t pid, const char *slice, const char *description, const char *after, const char *after2, uint64_t tasks_max, sd_bus_error *error, char **job);
 int manager_start_unit(Manager *manager, const char *unit, sd_bus_error *error, char **job);
 int manager_stop_unit(Manager *manager, const char *unit, sd_bus_error *error, char **job);
 int manager_abandon_scope(Manager *manager, const char *scope, sd_bus_error *error);
