@@ -615,27 +615,23 @@ static struct udev_device *handle_bcma(struct udev_device *parent, char **path) 
         return parent;
 }
 
-static struct udev_device *handle_ccw(struct udev_device *parent, struct udev_device *dev, char **path) {
-        struct udev_device *scsi_dev;
+/* Handle devices of AP bus in System z platform. */
+static struct udev_device *handle_ap(struct udev_device *parent, char **path) {
+        const char *type, *func;
 
-        scsi_dev = udev_device_get_parent_with_subsystem_devtype(dev, "scsi", "scsi_device");
-        if (scsi_dev != NULL) {
-                const char *wwpn;
-                const char *lun;
-                const char *hba_id;
+        assert(parent);
+        assert(path);
 
-                hba_id = udev_device_get_sysattr_value(scsi_dev, "hba_id");
-                wwpn = udev_device_get_sysattr_value(scsi_dev, "wwpn");
-                lun = udev_device_get_sysattr_value(scsi_dev, "fcp_lun");
-                if (hba_id != NULL && lun != NULL && wwpn != NULL) {
-                        path_prepend(path, "ccw-%s-zfcp-%s:%s", hba_id, wwpn, lun);
-                        goto out;
-                }
+        type = udev_device_get_sysattr_value(parent, "type");
+        func = udev_device_get_sysattr_value(parent, "ap_functions");
+
+        if (type != NULL && func != NULL) {
+                path_prepend(path, "ap-%s-%s", type, func);
+                goto out;
         }
-
-        path_prepend(path, "ccw-%s", udev_device_get_sysname(parent));
+        path_prepend(path, "ap-%s", udev_device_get_sysname(parent));
 out:
-        parent = skip_subsystem(parent, "ccw");
+        parent = skip_subsystem(parent, "ap");
         return parent;
 }
 
@@ -647,15 +643,8 @@ static int builtin_path_id(struct udev_device *dev, int argc, char *argv[], bool
         bool new_sas_path = false;
         bool enable_new_sas_path = true;
 
-        /* S390 ccw bus */
-        parent = udev_device_get_parent_with_subsystem_devtype(dev, "ccw", NULL);
-        if (parent != NULL) {
-                handle_ccw(parent, dev, &path);
-                goto out;
-        }
-
 restart:
-        ;
+
         /* walk up the chain of devices and compose path */
         parent = dev;
         while (parent != NULL) {
@@ -718,6 +707,25 @@ restart:
                                 supported_parent = true;
                                 supported_transport = true;
                         }
+                } else if (streq(subsys, "ccw")) {
+                        path_prepend(&path, "ccw-%s", udev_device_get_sysname(parent));
+                        parent = skip_subsystem(parent, "ccw");
+                        supported_transport = true;
+                        supported_parent = true;
+                } else if (streq(subsys, "ccwgroup")) {
+                        path_prepend(&path, "ccwgroup-%s", udev_device_get_sysname(parent));
+                        parent = skip_subsystem(parent, "ccwgroup");
+                        supported_transport = true;
+                        supported_parent = true;
+                } else if (streq(subsys, "ap")) {
+                        parent = handle_ap(parent, &path);
+                        supported_transport = true;
+                        supported_parent = true;
+                } else if (streq(subsys, "iucv")) {
+                        path_prepend(&path, "iucv-%s", udev_device_get_sysname(parent));
+                        parent = skip_subsystem(parent, "iucv");
+                        supported_transport = true;
+                        supported_parent = true;
                 }
 
                 parent = udev_device_get_parent(parent);
@@ -743,7 +751,6 @@ restart:
                 path = NULL;
         }
 
-out:
         if (path != NULL) {
                 char tag[UTIL_NAME_SIZE];
                 size_t i;
