@@ -315,6 +315,7 @@ int undecchar(char c) _const_;
 char *cescape(const char *s);
 char *cunescape(const char *s);
 char *cunescape_length(const char *s, size_t length);
+int cunescape_one(const char *p, size_t length, int32_t *ret, bool *eight_bit);
 char *cunescape_length_with_prefix(const char *s, size_t length, const char *prefix);
 
 char *xescape(const char *s, const char *bad);
@@ -1082,3 +1083,16 @@ void sigkill_wait(pid_t *pid);
 int syslog_parse_priority(const char **p, int *priority, bool with_facility);
 
 char *shell_maybe_quote(const char *s);
+
+typedef enum ExtractFlags {
+        EXTRACT_RELAX                    = 1,
+        EXTRACT_CUNESCAPE                = 2,
+        EXTRACT_CUNESCAPE_RELAX          = 4,
+        EXTRACT_QUOTES                   = 8,
+        EXTRACT_DONT_COALESCE_SEPARATORS = 16,
+        EXTRACT_RETAIN_ESCAPE            = 32,
+} ExtractFlags;
+
+int extract_first_word(const char **p, char **ret, const char *separators, ExtractFlags flags);
+int extract_first_word_and_warn(const char **p, char **ret, const char *separators, ExtractFlags flags, const char *unit, const char *filename, unsigned line, const char *rvalue);
+int extract_many_words(const char **p, const char *separators, ExtractFlags flags, ...) _sentinel_;
