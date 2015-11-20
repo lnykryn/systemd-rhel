@@ -93,12 +93,15 @@
 #include "virt.h"
 #include "def.h"
 #include "sparse-endian.h"
+#include "conf-parser.h"
 
 int saved_argc = 0;
 char **saved_argv = NULL;
 
 static volatile unsigned cached_columns = 0;
 static volatile unsigned cached_lines = 0;
+
+bool unichar_is_valid(int32_t ch);
 
 size_t page_size(void) {
         static thread_local size_t pgsz = 0;
@@ -1361,6 +1364,207 @@ char *cescape(const char *s) {
                 t += cescape_char(*f, t);
 
         *t = 0;
+
+        return r;
+}
+
+bool unichar_is_valid(int32_t ch) {
+
+        if (ch >= 0x110000) /* End of unicode space */
+                return false;
+        if ((ch & 0xFFFFF800) == 0xD800) /* Reserved area for UTF-16 */
+                return false;
+        if ((ch >= 0xFDD0) && (ch <= 0xFDEF)) /* Reserved */
+                return false;
+        if ((ch & 0xFFFE) == 0xFFFE) /* BOM (Byte Order Mark) */
+                return false;
+
+        return true;
+}
+
+int cunescape_one(const char *p, size_t length, int32_t *ret, bool *eight_bit) {
+        int r = 1;
+
+        assert(p);
+        assert(*p);
+        assert(ret);
+
+        /* Unescapes C style. Returns the unescaped character in ret.
+         * Sets *eight_bit to true if the escaped sequence either fits in
+         * one byte in UTF-8 or is a non-unicode literal byte and should
+         * instead be copied directly.
+         */
+
+        if (length != (size_t) -1 && length < 1)
+                return -EINVAL;
+
+        switch (p[0]) {
+
+        case 'a':
+                *ret = '\a';
+                break;
+        case 'b':
+                *ret = '\b';
+                break;
+        case 'f':
+                *ret = '\f';
+                break;
+        case 'n':
+                *ret = '\n';
+                break;
+        case 'r':
+                *ret = '\r';
+                break;
+        case 't':
+                *ret = '\t';
+                break;
+        case 'v':
+                *ret = '\v';
+                break;
+        case '\\':
+                *ret = '\\';
+                break;
+        case '"':
+                *ret = '"';
+                break;
+        case '\'':
+                *ret = '\'';
+                break;
+
+        case 's':
+                /* This is an extension of the XDG syntax files */
+                *ret = ' ';
+                break;
+
+        case 'x': {
+                /* hexadecimal encoding */
+                int a, b;
+
+                if (length != (size_t) -1 && length < 3)
+                        return -EINVAL;
+
+                a = unhexchar(p[1]);
+                if (a < 0)
+                        return -EINVAL;
+
+                b = unhexchar(p[2]);
+                if (b < 0)
+                        return -EINVAL;
+
+                /* Don't allow NUL bytes */
+                if (a == 0 && b == 0)
+                        return -EINVAL;
+
+                *ret = (a << 4U) | b;
+                *eight_bit = true;
+                r = 3;
+                break;
+        }
+
+        case 'u': {
+                /* C++11 style 16bit unicode */
+
+                int a[4];
+                unsigned i;
+                uint32_t c;
+
+                if (length != (size_t) -1 && length < 5)
+                        return -EINVAL;
+
+                for (i = 0; i < 4; i++) {
+                        a[i] = unhexchar(p[1 + i]);
+                        if (a[i] < 0)
+                                return a[i];
+                }
+
+                c = ((uint32_t) a[0] << 12U) | ((uint32_t) a[1] << 8U) | ((uint32_t) a[2] << 4U) | (uint32_t) a[3];
+
+                /* Don't allow 0 chars */
+                if (c == 0)
+                        return -EINVAL;
+
+                *ret = c;
+                r = 5;
+                break;
+        }
+
+        case 'U': {
+                /* C++11 style 32bit unicode */
+
+                int a[8];
+                unsigned i;
+                int32_t c;
+
+                if (length != (size_t) -1 && length < 9)
+                        return -EINVAL;
+
+                for (i = 0; i < 8; i++) {
+                        a[i] = unhexchar(p[1 + i]);
+                        if (a[i] < 0)
+                                return a[i];
+                }
+
+                c = ((uint32_t) a[0] << 28U) | ((uint32_t) a[1] << 24U) | ((uint32_t) a[2] << 20U) | ((uint32_t) a[3] << 16U) |
+                    ((uint32_t) a[4] << 12U) | ((uint32_t) a[5] <<  8U) | ((uint32_t) a[6] <<  4U) |  (uint32_t) a[7];
+
+                /* Don't allow 0 chars */
+                if (c == 0)
+                        return -EINVAL;
+
+                /* Don't allow invalid code points */
+                if (!unichar_is_valid(c))
+                        return -EINVAL;
+
+                *ret = c;
+                r = 9;
+                break;
+        }
+
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7': {
+                /* octal encoding */
+                int a, b, c;
+                int32_t m;
+
+                if (length != (size_t) -1 && length < 3)
+                        return -EINVAL;
+
+                a = unoctchar(p[0]);
+                if (a < 0)
+                        return -EINVAL;
+
+                b = unoctchar(p[1]);
+                if (b < 0)
+                        return -EINVAL;
+
+                c = unoctchar(p[2]);
+                if (c < 0)
+                        return -EINVAL;
+
+                /* don't allow NUL bytes */
+                if (a == 0 && b == 0 && c == 0)
+                        return -EINVAL;
+
+                /* Don't allow bytes above 255 */
+                m = ((uint32_t) a << 6U) | ((uint32_t) b << 3U) | (uint32_t) c;
+                if (m > 255)
+                        return -EINVAL;
+
+                *ret = m;
+                *eight_bit = true;
+                r = 3;
+                break;
+        }
+
+        default:
+                return -EINVAL;
+        }
 
         return r;
 }
@@ -8206,4 +8410,267 @@ bool colors_enabled(void) {
         }
 
         return parse_boolean(colors) != 0;
+}
+
+int extract_first_word(const char **p, char **ret, const char *separators, ExtractFlags flags) {
+        _cleanup_free_ char *s = NULL;
+        size_t allocated = 0, sz = 0;
+        char c;
+        int r;
+
+        char quote = 0;                 /* 0 or ' or " */
+        bool backslash = false;         /* whether we've just seen a backslash */
+
+        assert(p);
+        assert(ret);
+
+        /* Bail early if called after last value or with no input */
+        if (!*p)
+                goto finish_force_terminate;
+        c = **p;
+
+        if (!separators)
+                separators = WHITESPACE;
+
+        /* Parses the first word of a string, and returns it in
+         * *ret. Removes all quotes in the process. When parsing fails
+         * (because of an uneven number of quotes or similar), leaves
+         * the pointer *p at the first invalid character. */
+
+        if (flags & EXTRACT_DONT_COALESCE_SEPARATORS)
+                if (!GREEDY_REALLOC(s, allocated, sz+1))
+                        return -ENOMEM;
+
+        for (;; (*p)++, c = **p) {
+                if (c == 0)
+                        goto finish_force_terminate;
+                else if (strchr(separators, c)) {
+                        if (flags & EXTRACT_DONT_COALESCE_SEPARATORS) {
+                                (*p)++;
+                                goto finish_force_next;
+                        }
+                } else {
+                        /* We found a non-blank character, so we will always
+                         * want to return a string (even if it is empty),
+                         * allocate it here. */
+                        if (!GREEDY_REALLOC(s, allocated, sz+1))
+                                return -ENOMEM;
+                        break;
+                }
+        }
+
+        for (;; (*p)++, c = **p) {
+                if (backslash) {
+                        if (!GREEDY_REALLOC(s, allocated, sz+7))
+                                return -ENOMEM;
+
+                        if (c == 0) {
+                                if ((flags & EXTRACT_CUNESCAPE_RELAX) &&
+                                    (!quote || flags & EXTRACT_RELAX)) {
+                                        /* If we find an unquoted trailing backslash and we're in
+                                         * EXTRACT_CUNESCAPE_RELAX mode, keep it verbatim in the
+                                         * output.
+                                         *
+                                         * Unbalanced quotes will only be allowed in EXTRACT_RELAX
+                                         * mode, EXTRACT_CUNESCAPE_RELAX mode does not allow them.
+                                         */
+                                        s[sz++] = '\\';
+                                        goto finish_force_terminate;
+                                }
+                                if (flags & EXTRACT_RELAX)
+                                        goto finish_force_terminate;
+                                return -EINVAL;
+                        }
+
+                        if (flags & EXTRACT_CUNESCAPE) {
+                                bool eight_bit = false;
+                                int32_t u;
+
+                                r = cunescape_one(*p, (size_t) -1, &u, &eight_bit);
+                                if (r < 0) {
+                                        if (flags & EXTRACT_CUNESCAPE_RELAX) {
+                                                s[sz++] = '\\';
+                                                s[sz++] = c;
+                                        } else
+                                                return -EINVAL;
+                                } else {
+                                        (*p) += r - 1;
+
+                                        if (eight_bit)
+                                                s[sz++] = u;
+                                        else
+                                                sz += utf8_encode_unichar(s + sz, u);
+                                }
+                        } else
+                                s[sz++] = c;
+
+                        backslash = false;
+
+                } else if (quote) {     /* inside either single or double quotes */
+                        for (;; (*p)++, c = **p) {
+                                if (c == 0) {
+                                        if (flags & EXTRACT_RELAX)
+                                                goto finish_force_terminate;
+                                        return -EINVAL;
+                                } else if (c == quote) {        /* found the end quote */
+                                        quote = 0;
+                                        break;
+                                } else if (c == '\\' && !(flags & EXTRACT_RETAIN_ESCAPE)) {
+                                        backslash = true;
+                                        break;
+                                } else {
+                                        if (!GREEDY_REALLOC(s, allocated, sz+2))
+                                                return -ENOMEM;
+
+                                        s[sz++] = c;
+                                }
+                        }
+
+                } else {
+                        for (;; (*p)++, c = **p) {
+                                if (c == 0)
+                                        goto finish_force_terminate;
+                                else if ((c == '\'' || c == '"') && (flags & EXTRACT_QUOTES)) {
+                                        quote = c;
+                                        break;
+                                } else if (c == '\\' && !(flags & EXTRACT_RETAIN_ESCAPE)) {
+                                        backslash = true;
+                                        break;
+                                } else if (strchr(separators, c)) {
+                                        if (flags & EXTRACT_DONT_COALESCE_SEPARATORS) {
+                                                (*p)++;
+                                                goto finish_force_next;
+                                        }
+                                        /* Skip additional coalesced separators. */
+                                        for (;; (*p)++, c = **p) {
+                                                if (c == 0)
+                                                        goto finish_force_terminate;
+                                                if (!strchr(separators, c))
+                                                        break;
+                                        }
+                                        goto finish;
+
+                                } else {
+                                        if (!GREEDY_REALLOC(s, allocated, sz+2))
+                                                return -ENOMEM;
+
+                                        s[sz++] = c;
+                                }
+                        }
+                }
+        }
+
+finish_force_terminate:
+        *p = NULL;
+finish:
+        if (!s) {
+                *p = NULL;
+                *ret = NULL;
+                return 0;
+        }
+
+finish_force_next:
+        s[sz] = 0;
+        *ret = s;
+        s = NULL;
+
+        return 1;
+}
+
+int extract_first_word_and_warn(
+                const char **p,
+                char **ret,
+                const char *separators,
+                ExtractFlags flags,
+                const char *unit,
+                const char *filename,
+                unsigned line,
+                const char *rvalue) {
+
+        /* Try to unquote it, if it fails, warn about it and try again
+         * but this time using EXTRACT_CUNESCAPE_RELAX to keep the
+         * backslashes verbatim in invalid escape sequences. */
+
+        const char *save;
+        int r;
+
+        save = *p;
+        r = extract_first_word(p, ret, separators, flags);
+        if (r >= 0)
+                return r;
+
+        if (r == -EINVAL && !(flags & EXTRACT_CUNESCAPE_RELAX)) {
+
+                /* Retry it with EXTRACT_CUNESCAPE_RELAX. */
+                *p = save;
+                r = extract_first_word(p, ret, separators, flags|EXTRACT_CUNESCAPE_RELAX);
+                if (r >= 0) {
+                        /* It worked this time, hence it must have been an invalid escape sequence we could correct. */
+                        log_syntax(unit, LOG_WARNING, filename, line, EINVAL, "Invalid escape sequences in line, correcting: \"%s\"", rvalue);
+                        return r;
+                }
+
+                /* If it's still EINVAL; then it must be unbalanced quoting, report this. */
+                if (r == -EINVAL)
+                        return log_syntax(unit, LOG_ERR, filename, line, r, "Unbalanced quoting, ignoring: \"%s\"", rvalue);
+        }
+
+        /* Can be any error, report it */
+        return log_syntax(unit, LOG_ERR, filename, line, r, "Unable to decode word \"%s\", ignoring: %m", rvalue);
+}
+
+int extract_many_words(const char **p, const char *separators, ExtractFlags flags, ...) {
+        va_list ap;
+        char **l;
+        int n = 0, i, c, r;
+
+        /* Parses a number of words from a string, stripping any
+         * quotes if necessary. */
+
+        assert(p);
+
+        /* Count how many words are expected */
+        va_start(ap, flags);
+        for (;;) {
+                if (!va_arg(ap, char **))
+                        break;
+                n++;
+        }
+        va_end(ap);
+
+        if (n <= 0)
+                return 0;
+
+        /* Read all words into a temporary array */
+        l = newa0(char*, n);
+        for (c = 0; c < n; c++) {
+
+                r = extract_first_word(p, &l[c], separators, flags);
+                if (r < 0) {
+                        int j;
+
+                        for (j = 0; j < c; j++)
+                                free(l[j]);
+
+                        return r;
+                }
+
+                if (r == 0)
+                        break;
+        }
+
+        /* If we managed to parse all words, return them in the passed
+         * in parameters */
+        va_start(ap, flags);
+        for (i = 0; i < n; i++) {
+                char **v;
+
+                v = va_arg(ap, char **);
+                assert(v);
+
+                *v = l[i];
+        }
+        va_end(ap);
+
+        return c;
 }
