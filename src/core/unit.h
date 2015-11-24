@@ -548,7 +548,7 @@ void unit_serialize_item_format(Unit *u, FILE *f, const char *key, const char *v
 void unit_serialize_item(Unit *u, FILE *f, const char *key, const char *value);
 int unit_deserialize(Unit *u, FILE *f, FDSet *fds);
 
-int unit_add_node_link(Unit *u, const char *what, bool wants);
+int unit_add_node_link(Unit *u, const char *what, bool wants, UnitDependency d);
 
 int unit_coldplug(Unit *u, Hashmap *deferred_work);
 
