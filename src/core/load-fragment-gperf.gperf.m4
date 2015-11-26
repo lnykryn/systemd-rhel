@@ -336,7 +336,7 @@ Timer.OnUnitInactiveSec,         config_parse_timer,                 0,         
 Timer.Persistent,                config_parse_bool,                  0,                             offsetof(Timer, persistent)
 Timer.WakeSystem,                config_parse_bool,                  0,                             offsetof(Timer, wake_system)
 Timer.AccuracySec,               config_parse_sec,                   0,                             offsetof(Timer, accuracy_usec)
-Timer.RandomSec,                 config_parse_sec,                   0,                             offsetof(Timer, random_usec)
+Timer.RandomizedDelaySec,        config_parse_sec,                   0,                             offsetof(Timer, random_usec)
 Timer.Unit,                      config_parse_trigger_unit,          0,                             0
 m4_dnl
 Path.PathExists,                 config_parse_path_spec,             0,                             0
