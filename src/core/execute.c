@@ -1977,7 +1977,7 @@ int exec_spawn(ExecCommand *command,
                         NULL);
         pid = fork();
         if (pid < 0)
-                return log_unit_error_errno(params->unit_id, r, "Failed to fork: %m");
+                return log_unit_error_errno(params->unit_id, errno, "Failed to fork: %m");
 
         if (pid == 0) {
                 int exit_status;
