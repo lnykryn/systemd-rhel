@@ -2617,6 +2617,11 @@ static int start_unit_one(
                 verb = method_to_verb(method);
 
                 log_error("Failed to %s %s: %s", verb, name, bus_error_message(error, r));
+
+                if (!sd_bus_error_has_name(error, BUS_ERROR_NO_SUCH_UNIT) &&
+                    !sd_bus_error_has_name(error, BUS_ERROR_UNIT_MASKED))
+                        log_error("See system logs and 'systemctl status %s' for details.", name);
+
                 return r;
         }
 
