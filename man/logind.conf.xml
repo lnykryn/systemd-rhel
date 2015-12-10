@@ -276,7 +276,7 @@
         memory and message queues, as well as POSIX shared memory and
         message queues. Note that IPC objects of the root user are
         excluded from the effect of this setting. Defaults to
-        <literal>yes</literal>.</para></listitem>
+        <literal>no</literal>.</para></listitem>
       </varlistentry>
 
     </variablelist>
