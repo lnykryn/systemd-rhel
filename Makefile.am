@@ -5369,8 +5369,6 @@ systemd_pull_SOURCES = \
 	src/import/import-raw.h \
 	src/import/import-tar.c \
 	src/import/import-tar.h \
-	src/import/import-dkr.c \
-	src/import/import-dkr.h \
 	src/import/import-job.c \
 	src/import/import-job.h \
 	src/import/import-common.c \

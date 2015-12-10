@@ -77,7 +77,6 @@ static unsigned arg_lines = 10;
 static OutputMode arg_output = OUTPUT_SHORT;
 static bool arg_force = false;
 static ImportVerify arg_verify = IMPORT_VERIFY_SIGNATURE;
-static const char* arg_dkr_index_url = NULL;
 
 static void pager_open_if_enabled(void) {
 
@@ -1998,78 +1997,6 @@ static int pull_raw(int argc, char *argv[], void *userdata) {
         return pull_image_common(bus, m);
 }
 
-static int pull_dkr(int argc, char *argv[], void *userdata) {
-        _cleanup_bus_message_unref_ sd_bus_message *m = NULL;
-        const char *local, *remote, *tag;
-        sd_bus *bus = userdata;
-        int r;
-
-        if (arg_verify != IMPORT_VERIFY_NO) {
-                log_error("Imports from DKR do not support image verification, please pass --verify=no.");
-                return -EINVAL;
-        }
-
-        remote = argv[1];
-        tag = strchr(remote, ':');
-        if (tag) {
-                remote = strndupa(remote, tag - remote);
-                tag++;
-        }
-
-        if (!dkr_name_is_valid(remote)) {
-                log_error("DKR name '%s' is invalid.", remote);
-                return -EINVAL;
-        }
-        if (tag && !dkr_tag_is_valid(tag)) {
-                log_error("DKR tag '%s' is invalid.", remote);
-                return -EINVAL;
-        }
-
-        if (argc >= 3)
-                local = argv[2];
-        else {
-                local = strchr(remote, '/');
-                if (local)
-                        local++;
-                else
-                        local = remote;
-        }
-
-        if (isempty(local) || streq(local, "-"))
-                local = NULL;
-
-        if (local) {
-                if (!machine_name_is_valid(local)) {
-                        log_error("Local name %s is not a suitable machine name.", local);
-                        return -EINVAL;
-                }
-        }
-
-        r = sd_bus_message_new_method_call(
-                        bus,
-                        &m,
-                        "org.freedesktop.import1",
-                        "/org/freedesktop/import1",
-                        "org.freedesktop.import1.Manager",
-                        "PullDkr");
-        if (r < 0)
-                return bus_log_create_error(r);
-
-        r = sd_bus_message_append(
-                        m,
-                        "sssssb",
-                        arg_dkr_index_url,
-                        remote,
-                        tag,
-                        local,
-                        import_verify_to_string(arg_verify),
-                        arg_force);
-        if (r < 0)
-                return bus_log_create_error(r);
-
-        return pull_image_common(bus, m);
-}
-
 typedef struct TransferInfo {
         uint32_t id;
         const char *type;
@@ -2237,8 +2164,6 @@ static int help(int argc, char *argv[], void *userdata) {
                "      --verify=MODE           Verification mode for downloaded images (no,\n"
                "                              checksum, signature)\n"
                "      --force                 Download image even if already exists\n"
-               "      --dkr-index-url=URL     Specify the index URL to use for DKR image\n"
-               "                              downloads\n\n"
                "Machine Commands:\n"
                "  list                        List running VMs and containers\n"
                "  status NAME...              Show VM/container details\n"
@@ -2265,7 +2190,6 @@ static int help(int argc, char *argv[], void *userdata) {
                "Image Transfer Commands:\n"
                "  pull-tar URL [NAME]         Download a TAR container image\n"
                "  pull-raw URL [NAME]         Download a RAW container or VM image\n"
-               "  pull-dkr REMOTE [NAME]      Download a DKR container image\n"
                "  list-transfers              Show list of downloads in progress\n"
                "  cancel-transfer             Cancel a download\n"
                , program_invocation_short_name);
@@ -2284,8 +2208,7 @@ static int parse_argv(int argc, char *argv[]) {
                 ARG_MKDIR,
                 ARG_NO_ASK_PASSWORD,
                 ARG_VERIFY,
-                ARG_FORCE,
-                ARG_DKR_INDEX_URL,
+                ARG_FORCE
         };
 
         static const struct option options[] = {
@@ -2308,7 +2231,6 @@ static int parse_argv(int argc, char *argv[]) {
                 { "no-ask-password", no_argument,       NULL, ARG_NO_ASK_PASSWORD },
                 { "verify",          required_argument, NULL, ARG_VERIFY          },
                 { "force",           no_argument,       NULL, ARG_FORCE           },
-                { "dkr-index-url",   required_argument, NULL, ARG_DKR_INDEX_URL   },
                 {}
         };
 
@@ -2421,15 +2343,6 @@ static int parse_argv(int argc, char *argv[]) {
                         arg_force = true;
                         break;
 
-                case ARG_DKR_INDEX_URL:
-                        if (!http_url_is_valid(optarg)) {
-                                log_error("Index URL is invalid: %s", optarg);
-                                return -EINVAL;
-                        }
-
-                        arg_dkr_index_url = optarg;
-                        break;
-
                 case '?':
                         return -EINVAL;
 
@@ -2467,7 +2380,6 @@ static int machinectl_main(int argc, char *argv[], sd_bus *bus) {
                 { "disable",         2,        VERB_ANY, 0,            enable_machine    },
                 { "pull-tar",        2,        3,        0,            pull_tar          },
                 { "pull-raw",        2,        3,        0,            pull_raw          },
-                { "pull-dkr",        2,        3,        0,            pull_dkr          },
                 { "list-transfers",  VERB_ANY, 1,        0,            list_transfers    },
                 { "cancel-transfer", 2,        VERB_ANY, 0,            cancel_transfer   },
                 {}

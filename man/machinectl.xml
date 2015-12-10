@@ -204,16 +204,6 @@
         image.</para></listitem>
       </varlistentry>
 
-      <varlistentry>
-        <term><option>--dkr-index-url</option></term>
-
-        <listitem><para>Specifies the index server to use for
-        downloading <literal>dkr</literal> images with the
-        <command>pull-dkr</command>. Takes a
-        <literal>http://</literal>, <literal>https://</literal>
-        URL.</para></listitem>
-      </varlistentry>
-
       <xi:include href="user-system-options.xml" xpointer="host" />
       <xi:include href="user-system-options.xml" xpointer="machine" />
 
@@ -603,42 +593,6 @@
       </varlistentry>
 
       <varlistentry>
-        <term><command>pull-dkr</command> <replaceable>REMOTE</replaceable> [<replaceable>NAME</replaceable>]</term>
-
-        <listitem><para>Downloads a <literal>dkr</literal> container
-        image and makes it available locally. The remote name refers
-        to a <literal>dkr</literal> container name. If omitted, the
-        local machine name is derived from the <literal>dkr</literal>
-        container name.</para>
-
-        <para>Image verification is not available for
-        <literal>dkr</literal> containers, and thus
-        <option>--verify=no</option> must always be specified with
-        this command.</para>
-
-        <para>This command downloads all (missing) layers for the
-        specified container and places them in read-only subvolumes in
-        <filename>/var/lib/machines/</filename>. A writable snapshot
-        of the newest layer is then created under the specified local
-        machine name. To omit creation of this writable snapshot, pass
-        <literal>-</literal> as local machine name.</para>
-
-        <para>The read-only layer subvolumes are prefixed with
-        <filename>.dkr-</filename>, and thus now shown by
-        <command>list-images</command>, unless <option>--all</option>
-        is passed.</para>
-
-        <para>To specify the <literal>dkr</literal> index server to
-        use for looking up the specified container, use
-        <option>--dkr-index-url=</option>.</para>
-
-        <para>Note that pressing C-c during execution of this command
-        will not abort the download. Use
-        <command>cancel-transfer</command>, described
-        below.</para></listitem>
-      </varlistentry>
-
-      <varlistentry>
         <term><command>list-transfers</command></term>
 
         <listitem><para>Shows a list of container or VM image
@@ -727,18 +681,6 @@
       and a root password is set. Afterwards the shell is left, and
       the machine started as system service. With the last command a
       login prompt into the container is requested.</para>
-    </example>
-
-    <example>
-      <title>Download a Fedora <literal>dkr</literal> image</title>
-
-      <programlisting># machinectl pull-dkr --verify=no mattdm/fedora
-# systemd-nspawn -M fedora</programlisting>
-
-      <para>Downloads a <literal>dkr</literal> image and opens a shell
-      in it. Note that the specified download command might require an
-      index server to be specified with the
-      <literal>--dkr-index-url=</literal>.</para>
     </example>
   </refsect1>
 

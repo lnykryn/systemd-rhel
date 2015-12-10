@@ -41,7 +41,3 @@ ImportVerify import_verify_from_string(const char *s) _pure_;
 
 int tar_strip_suffixes(const char *name, char **ret);
 int raw_strip_suffixes(const char *name, char **ret);
-
-bool dkr_name_is_valid(const char *name);
-bool dkr_id_is_valid(const char *id);
-#define dkr_tag_is_valid(tag) filename_is_valid(tag)

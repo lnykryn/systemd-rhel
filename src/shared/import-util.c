@@ -149,34 +149,3 @@ int raw_strip_suffixes(const char *p, char **ret) {
 
         return 0;
 }
-
-bool dkr_name_is_valid(const char *name) {
-        const char *slash, *p;
-
-        if (isempty(name))
-                return false;
-
-        slash = strchr(name, '/');
-        if (!slash)
-                return false;
-
-        if (!filename_is_valid(slash + 1))
-                return false;
-
-        p = strndupa(name, slash - name);
-        if (!filename_is_valid(p))
-                return false;
-
-        return true;
-}
-
-bool dkr_id_is_valid(const char *id) {
-
-        if (!filename_is_valid(id))
-                return false;
-
-        if (!in_charset(id, "0123456789abcdef"))
-                return false;
-
-        return true;
-}

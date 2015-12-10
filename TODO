@@ -126,10 +126,6 @@ Features:
 
 * rework journald sigbus stuff to use mutex
 
-* import-dkr: support tarsum checksum verification, if it becomes reality one day...
-
-* import-dkr: convert json bits to nspawn configuration
-
 * import: support import from local files, and export to local files
 
 * core/cgroup: support net_cls modules, and support automatically allocating class ids, then add support for making firewall changes depending on it, to implement a per-service firewall
