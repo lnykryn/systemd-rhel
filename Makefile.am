@@ -3785,9 +3785,9 @@ hwdb-remove-hook:
 endif
 
 # ------------------------------------------------------------------------------
-TESTS += \
-	test/udev-test.pl \
-	$(NULL)
+#TESTS += \
+#	test/udev-test.pl \
+#	$(NULL)
 
 if HAVE_PYTHON
 TESTS += \
