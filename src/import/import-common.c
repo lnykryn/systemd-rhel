@@ -526,7 +526,7 @@ int import_fork_tar(const char *path, pid_t *ret) {
                 if (unshare(CLONE_NEWNET) < 0)
                         log_error_errno(errno, "Failed to lock tar into network namespace, ignoring: %m");
 
-                r = capability_bounding_set_drop(~retain, true);
+                r = capability_bounding_set_drop(retain, true);
                 if (r < 0)
                         log_error_errno(r, "Failed to drop capabilities, ignoring: %m");
 
