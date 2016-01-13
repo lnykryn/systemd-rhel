@@ -807,7 +807,7 @@ int unit_add_exec_dependencies(Unit *u, ExecContext *c) {
                 return 0;
 
         if (c->private_tmp) {
-                r = unit_require_mounts_for(u, "/tmp");
+                r = unit_add_dependency_by_name(u, UNIT_AFTER, "tmp.mount", NULL, true);
                 if (r < 0)
                         return r;
 
