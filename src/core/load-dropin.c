@@ -205,6 +205,9 @@ int unit_load_dropin(Unit *u) {
                 }
         }
 
+        strv_free(u->dropin_paths);
+        u->dropin_paths = NULL;
+
         u->dropin_paths = unit_find_dropin_paths(u);
         if (! u->dropin_paths)
                 return 0;
