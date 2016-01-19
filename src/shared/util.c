@@ -8146,3 +8146,16 @@ char *shell_maybe_quote(const char *s) {
 
         return r;
 }
+
+bool colors_enabled(void) {
+        const char *colors;
+
+        colors = getenv("SYSTEMD_COLORS");
+        if (!colors) {
+                if (streq_ptr(getenv("TERM"), "dumb"))
+                        return false;
+                return on_tty();
+        }
+
+        return parse_boolean(colors) != 0;
+}

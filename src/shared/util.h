@@ -485,29 +485,30 @@ unsigned lines(void);
 void columns_lines_cache_reset(int _unused_ signum);
 
 bool on_tty(void);
+bool colors_enabled(void);
 
 static inline const char *ansi_highlight(void) {
-        return on_tty() ? ANSI_HIGHLIGHT_ON : "";
+        return colors_enabled() ? ANSI_HIGHLIGHT_ON : "";
 }
 
 static inline const char *ansi_highlight_red(void) {
-        return on_tty() ? ANSI_HIGHLIGHT_RED_ON : "";
+        return colors_enabled() ? ANSI_HIGHLIGHT_RED_ON : "";
 }
 
 static inline const char *ansi_highlight_green(void) {
-        return on_tty() ? ANSI_HIGHLIGHT_GREEN_ON : "";
+        return colors_enabled() ? ANSI_HIGHLIGHT_GREEN_ON : "";
 }
 
 static inline const char *ansi_highlight_yellow(void) {
-        return on_tty() ? ANSI_HIGHLIGHT_YELLOW_ON : "";
+        return colors_enabled() ? ANSI_HIGHLIGHT_YELLOW_ON : "";
 }
 
 static inline const char *ansi_highlight_blue(void) {
-        return on_tty() ? ANSI_HIGHLIGHT_BLUE_ON : "";
+        return colors_enabled() ? ANSI_HIGHLIGHT_BLUE_ON : "";
 }
 
 static inline const char *ansi_highlight_off(void) {
-        return on_tty() ? ANSI_HIGHLIGHT_OFF : "";
+        return colors_enabled() ? ANSI_HIGHLIGHT_OFF : "";
 }
 
 int files_same(const char *filea, const char *fileb);
