@@ -134,34 +134,14 @@ static int add_alias(const char *service, const char *alias) {
 }
 
 static int generate_unit_file(SysvStub *s) {
-        char **p;
         _cleanup_fclose_ FILE *f = NULL;
-        _cleanup_free_ char *unit = NULL;
-        _cleanup_free_ char *before = NULL;
-        _cleanup_free_ char *after = NULL;
-        _cleanup_free_ char *wants = NULL;
-        _cleanup_free_ char *conflicts = NULL;
+        const char *unit;
+        char **p;
         int r;
 
-        before = strv_join(s->before, " ");
-        if (!before)
-                return log_oom();
+        assert(s);
 
-        after = strv_join(s->after, " ");
-        if (!after)
-                return log_oom();
-
-        wants = strv_join(s->wants, " ");
-        if (!wants)
-                return log_oom();
-
-        conflicts = strv_join(s->conflicts, " ");
-        if (!conflicts)
-                return log_oom();
-
-        unit = strjoin(arg_dest, "/", s->name, NULL);
-        if (!unit)
-                return log_oom();
+        unit = strjoina(arg_dest, "/", s->name);
 
         /* We might already have a symlink with the same name from a Provides:,
          * or from backup files like /etc/init.d/foo.bak. Real scripts always win,
@@ -183,14 +163,14 @@ static int generate_unit_file(SysvStub *s) {
                 "Description=%s\n",
                 s->path, s->description);
 
-        if (!isempty(before))
-                fprintf(f, "Before=%s\n", before);
-        if (!isempty(after))
-                fprintf(f, "After=%s\n", after);
-        if (!isempty(wants))
-                fprintf(f, "Wants=%s\n", wants);
-        if (!isempty(conflicts))
-                fprintf(f, "Conflicts=%s\n", conflicts);
+        STRV_FOREACH(p, s->before)
+                fprintf(f, "Before=%s\n", *p);
+        STRV_FOREACH(p, s->after)
+                fprintf(f, "After=%s\n", *p);
+        STRV_FOREACH(p, s->wants)
+                fprintf(f, "Wants=%s\n", *p);
+        STRV_FOREACH(p, s->conflicts)
+                fprintf(f, "Conflicts=%s\n", *p);
 
         fprintf(f,
                 "\n[Service]\n"
