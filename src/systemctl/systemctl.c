@@ -3002,6 +3002,7 @@ static int check_unit_generic(sd_bus *bus, int code, const char *good_states, ch
         _cleanup_strv_free_ char **names = NULL;
         char **name;
         int r;
+        bool found = false;
 
         assert(bus);
         assert(args);
@@ -3016,11 +3017,13 @@ static int check_unit_generic(sd_bus *bus, int code, const char *good_states, ch
                 state = check_one_unit(bus, *name, good_states, arg_quiet);
                 if (state < 0)
                         return state;
-                if (state == 0)
-                        r = code;
+                if (state > 0)
+                        found = true;
         }
 
-        return r;
+        /* use the given return code for the case that we won't find
+         * any unit which matches the list */
+        return found ? 0 : code;
 }
 
 static int check_unit_active(sd_bus *bus, char **args) {
