@@ -1470,6 +1470,7 @@ int server_init(Server *s) {
         s->rate_limit_interval = DEFAULT_RATE_LIMIT_INTERVAL;
         s->rate_limit_burst = DEFAULT_RATE_LIMIT_BURST;
 
+        s->forward_to_syslog = true;
         s->forward_to_wall = true;
 
         s->max_file_usec = DEFAULT_MAX_FILE_USEC;
