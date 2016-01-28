@@ -70,8 +70,10 @@ int ask_password_tty(
                 POLL_INOTIFY
         };
 
-        assert(message);
         assert(_passphrase);
+
+        if (!message)
+                message = "Password:";
 
         if (flag_file) {
                 notify = inotify_init1(IN_CLOEXEC|IN_NONBLOCK);
