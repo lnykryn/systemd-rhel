@@ -4245,7 +4245,8 @@ journalctl_LDADD = \
 	libsystemd-journal-internal.la \
 	libsystemd-internal.la \
 	libsystemd-logs.la \
-	libsystemd-shared.la
+	libsystemd-shared.la \
+	libudev-core.la
 
 if HAVE_ACL
 journalctl_LDADD += \
