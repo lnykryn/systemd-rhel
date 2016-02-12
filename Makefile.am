@@ -397,7 +397,6 @@ rootlibexec_PROGRAMS = \
 	systemd-ac-power \
 	systemd-sysctl \
 	systemd-sleep \
-	systemd-bus-proxyd \
 	systemd-socket-proxyd \
 	systemd-update-done
 
@@ -1421,7 +1420,6 @@ tests += \
 	test-ratelimit \
 	test-condition \
 	test-uid-range \
-	test-bus-policy \
 	test-locale-util \
 	test-execute \
 	test-copy \
@@ -1792,14 +1790,11 @@ test_unaligned_SOURCES = \
 test_tables_SOURCES = \
 	src/test/test-tables.c \
 	src/shared/test-tables.h \
-	src/bus-proxyd/bus-xml-policy.c \
-	src/bus-proxyd/bus-xml-policy.h \
 	src/journal/journald-server.c \
 	src/journal/journald-server.h
 
 test_tables_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
-	-I$(top_srcdir)/src/bus-proxyd
+	$(AM_CPPFLAGS)
 
 test_tables_CFLAGS = \
 	$(AM_CFLAGS) \
@@ -2039,14 +2034,6 @@ test_conf_files_SOURCES = \
 	src/test/test-conf-files.c
 
 test_conf_files_LDADD = \
-	libsystemd-shared.la
-
-test_bus_policy_SOURCES = \
-	src/bus-proxyd/test-bus-xml-policy.c
-
-test_bus_policy_LDADD = \
-	libsystemd-proxy.la \
-	libsystemd-internal.la \
 	libsystemd-shared.la
 
 # ------------------------------------------------------------------------------
@@ -2704,75 +2691,12 @@ systemd_run_LDADD = \
 	libsystemd-shared.la
 
 # ------------------------------------------------------------------------------
-noinst_LTLIBRARIES += \
-	libsystemd-proxy.la
-
-libsystemd_proxy_la_SOURCES = \
-	src/bus-proxyd/bus-xml-policy.c \
-	src/bus-proxyd/bus-xml-policy.h \
-	src/bus-proxyd/driver.c \
-	src/bus-proxyd/driver.h \
-	src/bus-proxyd/proxy.c \
-	src/bus-proxyd/proxy.h \
-	src/bus-proxyd/synthesize.c \
-	src/bus-proxyd/synthesize.h
-
-libsystemd_proxy_la_CFLAGS = \
-	$(AM_CFLAGS) \
-	-pthread
-
-libsystemd_proxy_la_LIBADD = \
-	libsystemd-internal.la \
-	libsystemd-shared.la
-
-systemd_bus_proxyd_SOURCES = \
-	src/bus-proxyd/bus-proxyd.c
-
-systemd_bus_proxyd_CFLAGS = \
-	$(AM_CFLAGS) \
-	-pthread
-
-systemd_bus_proxyd_LDADD = \
-	libsystemd-proxy.la \
-	libsystemd-internal.la \
-	libsystemd-shared.la
-
 systemd_stdio_bridge_SOURCES = \
-	src/bus-proxyd/stdio-bridge.c
+	src/stdio-bridge/stdio-bridge.c
 
 systemd_stdio_bridge_LDADD = \
-	libsystemd-proxy.la \
 	libsystemd-internal.la \
 	libsystemd-shared.la
-
-if ENABLE_KDBUS
-nodist_systemunit_DATA += \
-	units/systemd-bus-proxyd.service
-
-dist_systemunit_DATA += \
-	units/systemd-bus-proxyd.socket
-
-nodist_userunit_DATA += \
-	units/user/systemd-bus-proxyd.service
-
-dist_userunit_DATA += \
-	units/user/systemd-bus-proxyd.socket
-endif
-
-EXTRA_DIST += \
-	units/systemd-bus-proxyd.service.m4.in \
-	units/user/systemd-bus-proxyd.service.in
-
-CLEANFILES += \
-	units/systemd-bus-proxyd.service.m4
-
-if HAVE_SMACK
-bus-proxyd-set-cap-hook:
-	-$(SETCAP) cap_mac_admin+ei $(DESTDIR)$(rootlibexecdir)/systemd-bus-proxyd
-
-INSTALL_EXEC_HOOKS += bus-proxyd-set-cap-hook
-endif
-
 # ------------------------------------------------------------------------------
 systemd_tty_ask_password_agent_SOURCES = \
 	src/tty-ask-password-agent/tty-ask-password-agent.c

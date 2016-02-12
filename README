@@ -198,9 +198,6 @@ USERS AND GROUPS:
         Similarly, the name resolution daemon requires the
         "systemd-resolve" system user and group to exist.
 
-        Similarly, the kdbus dbus1 proxy daemon requires the
-        "systemd-bus-proxy" system user and group to exist.
-
 NSS:
         systemd ships with three NSS modules:
 
