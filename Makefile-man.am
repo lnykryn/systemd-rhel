@@ -1762,8 +1762,6 @@ EXTRA_DIST += \
 	man/systemd-backlight@.service.xml \
 	man/systemd-binfmt.service.xml \
 	man/systemd-bootchart.xml \
-	man/systemd-bus-proxyd.xml \
-	man/systemd-bus-proxyd@.service.xml \
 	man/systemd-cat.xml \
 	man/systemd-cgls.xml \
 	man/systemd-cgtop.xml \
