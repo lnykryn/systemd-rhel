@@ -729,7 +729,7 @@ restart:
          * devices do not expose their buses and do not provide a unique
          * and predictable name that way.
          */
-        if (streq(udev_device_get_subsystem(dev), "block") && !supported_transport) {
+        if (streq_ptr(udev_device_get_subsystem(dev), "block") && !supported_transport) {
                 free(path);
                 path = NULL;
         }
