@@ -96,6 +96,7 @@ static struct udev_device *handle_scsi_fibre_channel(struct udev_device *parent,
         struct udev_device *hostdev;
         struct udev_device *vportdev;
         struct udev_device *fcdev = NULL;
+        struct udev_device *fc_vportdev = NULL;
         const char *port;
         char *lun = NULL;
 
@@ -103,27 +104,9 @@ static struct udev_device *handle_scsi_fibre_channel(struct udev_device *parent,
         if (targetdev == NULL)
                 return NULL;
 
-        rportdev = udev_device_get_parent(targetdev);
-        if (rportdev == NULL)
-                goto skip_npiv_check;
-
-        hostdev = udev_device_get_parent(rportdev);
-        if (hostdev == NULL)
-                goto skip_npiv_check;
-
-        vportdev = udev_device_get_parent(hostdev);
-        if (vportdev == NULL)
-                goto skip_npiv_check;
-
-        fcdev = udev_device_new_from_subsystem_sysname(udev, "fc_vports", udev_device_get_sysname(vportdev));
-
-skip_npiv_check:
-        if (fcdev == NULL) {
-                fcdev = udev_device_new_from_subsystem_sysname(udev, "fc_transport", udev_device_get_sysname(targetdev));
-                if (fcdev == NULL)
-                        return NULL;
-        }
-
+        fcdev = udev_device_new_from_subsystem_sysname(udev, "fc_transport", udev_device_get_sysname(targetdev));
+        if (fcdev == NULL)
+                return NULL;
         port = udev_device_get_sysattr_value(fcdev, "port_name");
         if (port == NULL) {
                 parent = NULL;
@@ -134,6 +117,32 @@ skip_npiv_check:
         path_prepend(path, "fc-%s-%s", port, lun);
         if (lun)
                 free(lun);
+
+        /* NPIV */
+        rportdev = udev_device_get_parent(targetdev);
+        if (rportdev == NULL)
+                goto out;
+
+        hostdev = udev_device_get_parent(rportdev);
+        if (hostdev == NULL)
+                goto out;
+
+        vportdev = udev_device_get_parent(hostdev);
+        if (vportdev == NULL)
+                goto out;
+
+        fc_vportdev = udev_device_new_from_subsystem_sysname(udev, "fc_vports", udev_device_get_sysname(vportdev));
+        if (fc_vportdev == NULL)
+                goto out;
+
+        port = udev_device_get_sysattr_value(fc_vportdev, "port_name");
+        if (port == NULL)
+                goto out_npiv;
+
+        path_prepend(path, "vport-%s", port);
+
+out_npiv:
+        udev_device_unref(fc_vportdev);
 out:
         udev_device_unref(fcdev);
         return parent;
