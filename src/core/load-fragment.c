@@ -3472,8 +3472,17 @@ static int merge_by_names(Unit **u, Set *names, const char *id) {
                         /* Hmm, we couldn't merge the other unit into
                          * ours? Then let's try it the other way
                          * round */
+                        if (unit_name_is_template(k) && (*u)->instance) {
+                                _cleanup_free_ char *instance = NULL;
 
-                        other = manager_get_unit((*u)->manager, k);
+                                instance = unit_name_replace_instance(k, (*u)->instance);
+                                if(!instance)
+                                        return -ENOMEM;
+                                other = manager_get_unit((*u)->manager, instance);
+
+                        } else
+                                other = manager_get_unit((*u)->manager, k);
+
                         free(k);
 
                         if (other) {
