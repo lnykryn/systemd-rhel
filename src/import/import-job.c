@@ -587,7 +587,7 @@ fail:
         return 0;
 }
 
-static int import_job_progress_callback(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+static int import_job_progress_callback(void *userdata, double dltotal, double dlnow, double ultotal, double ulnow) {
         ImportJob *j = userdata;
         unsigned percent;
         usec_t n;
@@ -714,10 +714,10 @@ int import_job_begin(ImportJob *j) {
         if (curl_easy_setopt(j->curl, CURLOPT_HEADERDATA, j) != CURLE_OK)
                 return -EIO;
 
-        if (curl_easy_setopt(j->curl, CURLOPT_XFERINFOFUNCTION, import_job_progress_callback) != CURLE_OK)
+        if (curl_easy_setopt(j->curl, CURLOPT_PROGRESSFUNCTION, import_job_progress_callback) != CURLE_OK)
                 return -EIO;
 
-        if (curl_easy_setopt(j->curl, CURLOPT_XFERINFODATA, j) != CURLE_OK)
+        if (curl_easy_setopt(j->curl, CURLOPT_PROGRESSDATA, j) != CURLE_OK)
                 return -EIO;
 
         if (curl_easy_setopt(j->curl, CURLOPT_NOPROGRESS, 0) != CURLE_OK)
