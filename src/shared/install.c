@@ -283,7 +283,7 @@ static int create_symlink(
 
         if (symlink(old_path, new_path) >= 0) {
                 unit_file_changes_add(changes, n_changes, UNIT_FILE_SYMLINK, new_path, old_path);
-                return 0;
+                return 1;
         }
 
         if (errno != EEXIST)
@@ -306,7 +306,7 @@ static int create_symlink(
         unit_file_changes_add(changes, n_changes, UNIT_FILE_UNLINK, new_path, NULL);
         unit_file_changes_add(changes, n_changes, UNIT_FILE_SYMLINK, new_path, old_path);
 
-        return 0;
+        return 1;
 }
 
 static int mark_symlink_for_removal(
