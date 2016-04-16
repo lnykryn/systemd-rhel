@@ -1944,12 +1944,20 @@ static void dump_unit_file_changes(const UnitFileChange *changes, unsigned n_cha
 
         assert(changes || n_changes == 0);
 
-        for (i = 0; i < n_changes; i++) {
-                if (changes[i].type == UNIT_FILE_SYMLINK)
-                        log_info("Created symlink from %s to %s.", changes[i].path, changes[i].source);
-                else
-                        log_info("Removed symlink %s.", changes[i].path);
-        }
+        for (i = 0; i < n_changes; i++)
+                switch(changes[i].type) {
+                case UNIT_FILE_SYMLINK:
+                        log_info("Created symlink %s, pointing to %s.", changes[i].path, changes[i].source);
+                        break;
+                case UNIT_FILE_UNLINK:
+                        log_info("Removed %s.", changes[i].path);
+                        break;
+                case UNIT_FILE_IS_MASKED:
+                        log_info("Unit %s is masked, ignoring.", changes[i].path);
+                        break;
+                default:
+                        assert_not_reached("bad change type");
+                }
 }
 
 static int set_default(sd_bus *bus, char **args) {

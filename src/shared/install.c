@@ -2402,6 +2402,9 @@ int unit_file_preset_all(
                                 continue;
 
                         r = preset_prepare_one(scope, &plus, &minus, &paths, root_dir, mode, de->d_name);
+                        if (r == -ESHUTDOWN)
+                                r = unit_file_changes_add(changes, n_changes,
+                                                          UNIT_FILE_IS_MASKED, de->d_name, NULL);
                         if (r < 0)
                                 return r;
                 }
@@ -2535,6 +2538,7 @@ DEFINE_STRING_TABLE_LOOKUP(unit_file_state, UnitFileState);
 static const char* const unit_file_change_type_table[_UNIT_FILE_CHANGE_TYPE_MAX] = {
         [UNIT_FILE_SYMLINK] = "symlink",
         [UNIT_FILE_UNLINK] = "unlink",
+        [UNIT_FILE_IS_MASKED] = "masked",
 };
 
 DEFINE_STRING_TABLE_LOOKUP(unit_file_change_type, UnitFileChangeType);
