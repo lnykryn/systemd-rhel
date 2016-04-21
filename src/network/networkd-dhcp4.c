@@ -58,6 +58,10 @@ static int link_set_dhcp_routes(Link *link) {
 
         assert(link);
         assert(link->dhcp_lease);
+        assert(link->network);
+
+        if (!link->network->dhcp_routes)
+                return 0;
 
         r = sd_dhcp_lease_get_router(link->dhcp_lease, &gateway);
         if (r < 0 && r != -ENOENT) {
