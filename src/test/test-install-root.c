@@ -657,7 +657,7 @@ int main(int argc, char *argv[]) {
         test_indirect(root);
         test_preset_and_list(root);
 
-        assert_se(rm_rf_dangerous(root, false, true, false));
+        assert_se(rm_rf_dangerous(root, false, true, false) == 0);
 
         return 0;
 }
