@@ -1897,6 +1897,8 @@ int bus_deserialize_and_dump_unit_file_changes(sd_bus_message *m, bool quiet, Un
                                 log_info("Removed symlink %s.", path);
                         else if (streq(type, "masked"))
                                 log_info("Unit %s is masked, ignoring.", path);
+                        else if (streq(type, "dangling"))
+                                log_info("Unit %s is an alias to a unit that is not present, ignoring.", path);
                         else
                                 log_notice("Manager reported unknown change type \"%s\" for %s.", type, path);
                 }

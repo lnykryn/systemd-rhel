@@ -1955,6 +1955,9 @@ static void dump_unit_file_changes(const UnitFileChange *changes, unsigned n_cha
                 case UNIT_FILE_IS_MASKED:
                         log_info("Unit %s is masked, ignoring.", changes[i].path);
                         break;
+                case UNIT_FILE_IS_DANGLING:
+                        log_info("Unit %s is an alias to a unit that is not present, ignoring.", changes[i].path);
+                        break;
                 default:
                         assert_not_reached("bad change type");
                 }
