@@ -303,7 +303,7 @@ int inhibitor_create_fifo(Inhibitor *i) {
                 if (r < 0)
                         return r;
 
-                r = sd_event_source_set_priority(i->event_source, SD_EVENT_PRIORITY_IDLE);
+                r = sd_event_source_set_priority(i->event_source, SD_EVENT_PRIORITY_IDLE-10);
                 if (r < 0)
                         return r;
         }
