@@ -72,12 +72,37 @@ int bus_send_queued_message(Manager *m) {
         return 0;
 }
 
+int bus_forward_agent_released(Manager *m, const char *path) {
+        int r;
+
+        assert(m);
+        assert(path);
+
+        if (!m->running_as == SYSTEMD_SYSTEM)
+                return 0;
+
+        if (!m->system_bus)
+                return 0;
+
+        /* If we are running a system instance we forward the agent message on the system bus, so that the user
+         * instances get notified about this, too */
+
+        r = sd_bus_emit_signal(m->system_bus,
+                               "/org/freedesktop/systemd1/agent",
+                               "org.freedesktop.systemd1.Agent",
+                               "Released",
+                               "s", path);
+        if (r < 0)
+                return log_warning_errno(r, "Failed to propagate agent release message: %m");
+
+        return 1;
+}
+
 static int signal_agent_released(sd_bus *bus, sd_bus_message *message, void *userdata, sd_bus_error *error) {
         Manager *m = userdata;
         const char *cgroup;
         int r;
 
-        assert(bus);
         assert(message);
         assert(m);
 
@@ -88,16 +113,6 @@ static int signal_agent_released(sd_bus *bus, sd_bus_message *message, void *use
         }
 
         manager_notify_cgroup_empty(m, cgroup);
-
-        if (m->running_as == SYSTEMD_SYSTEM && m->system_bus) {
-                /* If we are running as system manager, forward the
-                 * message to the system bus */
-
-                r = sd_bus_send(m->system_bus, message, NULL);
-                if (r < 0)
-                        log_warning_errno(r, "Failed to forward Released message: %m");
-        }
-
         return 0;
 }
 
@@ -677,25 +692,6 @@ static int bus_on_connection(sd_event_source *s, int fd, uint32_t revents, void 
         if (r < 0) {
                 log_warning_errno(r, "Failed to attach new connection bus to event loop: %m");
                 return 0;
-        }
-
-        if (m->running_as == SYSTEMD_SYSTEM) {
-                /* When we run as system instance we get the Released
-                 * signal via a direct connection */
-
-                r = sd_bus_add_match(
-                                bus,
-                                NULL,
-                                "type='signal',"
-                                "interface='org.freedesktop.systemd1.Agent',"
-                                "member='Released',"
-                                "path='/org/freedesktop/systemd1/agent'",
-                                signal_agent_released, m);
-
-                if (r < 0) {
-                        log_warning_errno(r, "Failed to register Released match on new connection bus: %m");
-                        return 0;
-                }
         }
 
         r = bus_setup_disconnected_match(m, bus);
