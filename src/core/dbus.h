@@ -40,3 +40,5 @@ int bus_verify_manage_unit_async(Manager *m, sd_bus_message *call, sd_bus_error 
 int bus_verify_manage_unit_async_for_kill(Manager *m, sd_bus_message *call, sd_bus_error *error);
 int bus_verify_manage_unit_files_async(Manager *m, sd_bus_message *call, sd_bus_error *error);
 int bus_verify_reload_daemon_async(Manager *m, sd_bus_message *call, sd_bus_error *error);
+
+int bus_forward_agent_released(Manager *m, const char *path);

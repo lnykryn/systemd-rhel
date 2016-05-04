@@ -1028,6 +1028,8 @@ int manager_notify_cgroup_empty(Manager *m, const char *cgroup) {
         assert(m);
         assert(cgroup);
 
+        log_debug("Got cgroup empty notification for: %s", cgroup);
+
         u = manager_get_unit_by_cgroup(m, cgroup);
         if (u) {
                 r = cg_is_empty_recursive(SYSTEMD_CGROUP_CONTROLLER, u->cgroup_path, true);
