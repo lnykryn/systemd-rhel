@@ -84,7 +84,7 @@ int bus_job_method_cancel(sd_bus *bus, sd_bus_message *message, void *userdata, 
         if (r < 0)
                 return r;
 
-        job_finish_and_invalidate(j, JOB_CANCELED, true);
+        job_finish_and_invalidate(j, JOB_CANCELED, true, false);
 
         return sd_bus_reply_method_return(message, NULL);
 }
