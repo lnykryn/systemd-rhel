@@ -435,6 +435,16 @@ bool socket_ipv6_is_supported(void) {
                 return true;
 
         /* If module was loaded with disable=1 no IPv6 available */
+        if (l[0] == '1')
+                return false;
+
+        free(l);
+        l = NULL;
+
+        if (read_one_line_file("/proc/sys/net/ipv6/conf/all/disable_ipv6", &l) < 0)
+                return true;
+
+        /* If IPv6 was disabled via sysctl during runtime */
         return l[0] == '0';
 }
 
