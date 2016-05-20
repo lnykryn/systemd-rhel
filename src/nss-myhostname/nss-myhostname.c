@@ -33,6 +33,7 @@
 #include "local-addresses.h"
 #include "macro.h"
 #include "nss-util.h"
+#include "socket-util.h"
 #include "util.h"
 
 /* We use 127.0.0.2 as IPv4 address. This has the advantage over
@@ -380,9 +381,13 @@ enum nss_status _nss_myhostname_gethostbyname3_r(
                         return NSS_STATUS_NOTFOUND;
                 }
 
-                n_addresses = local_addresses(NULL, 0, af, &addresses);
-                if (n_addresses < 0)
+                if (af == AF_INET6 && !socket_ipv6_is_supported()) {
                         n_addresses = 0;
+                } else {
+                        n_addresses = local_addresses(NULL, 0, af, &addresses);
+                        if (n_addresses < 0)
+                                n_addresses = 0;
+                }
 
                 canonical = hn;
                 additional = n_addresses <= 0 && af == AF_INET6 ? "localhost" : NULL;
