@@ -134,8 +134,6 @@ static int replay(const char *root) {
 
         assert(root);
 
-        block_bump_request_nr(root);
-
         if (asprintf(&pack_fn, "%s/.readahead", root) < 0)
                 return log_oom();
 
