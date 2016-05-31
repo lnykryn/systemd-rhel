@@ -75,6 +75,25 @@
 #include "mkdir.h"
 #include "dropin.h"
 
+/* The init script exit status codes
+   0       program is running or service is OK
+   1       program is dead and /var/run pid file exists
+   2       program is dead and /var/lock lock file exists
+   3       program is not running
+   4       program or service status is unknown
+   5-99    reserved for future LSB use
+   100-149 reserved for distribution use
+   150-199 reserved for application use
+   200-254 reserved
+*/
+enum {
+        EXIT_PROGRAM_RUNNING_OR_SERVICE_OK        = 0,
+        EXIT_PROGRAM_DEAD_AND_PID_EXISTS          = 1,
+        EXIT_PROGRAM_DEAD_AND_LOCK_FILE_EXISTS    = 2,
+        EXIT_PROGRAM_NOT_RUNNING                  = 3,
+        EXIT_PROGRAM_OR_SERVICES_STATUS_UNKNOWN   = 4,
+};
+
 static char **arg_types = NULL;
 static char **arg_states = NULL;
 static char **arg_properties = NULL;
@@ -3028,11 +3047,11 @@ static int check_unit_generic(sd_bus *bus, int code, const char *good_states, ch
 
 static int check_unit_active(sd_bus *bus, char **args) {
         /* According to LSB: 3, "program is not running" */
-        return check_unit_generic(bus, 3, "active\0reloading\0", args + 1);
+        return check_unit_generic(bus, EXIT_PROGRAM_NOT_RUNNING, "active\0reloading\0", args + 1);
 }
 
 static int check_unit_failed(sd_bus *bus, char **args) {
-        return check_unit_generic(bus, 1, "failed\0", args + 1);
+        return check_unit_generic(bus, EXIT_PROGRAM_DEAD_AND_PID_EXISTS, "failed\0", args + 1);
 }
 
 static int kill_unit(sd_bus *bus, char **args) {
@@ -4294,11 +4313,11 @@ static int show_one(
                  * 4: program or service status is unknown
                  */
                 if (info.pid_file && access(info.pid_file, F_OK) == 0)
-                        r = 1;
+                        r = EXIT_PROGRAM_DEAD_AND_PID_EXISTS;
                 else if (streq_ptr(info.load_state, "not-found") && streq_ptr(info.active_state, "inactive"))
-                        r = 4;
+                        r = EXIT_PROGRAM_OR_SERVICES_STATUS_UNKNOWN;
                 else
-                        r = 3;
+                        r = EXIT_PROGRAM_NOT_RUNNING;
         }
 
         while ((p = info.exec)) {
