@@ -3752,6 +3752,7 @@ systemd_hwdb_SOURCES = \
 	src/hwdb/hwdb.c
 
 systemd_hwdb_LDADD = \
+	libsystemd-label.la \
 	libsystemd-shared.la \
 	libsystemd-internal.la \
 	libudev-internal.la
