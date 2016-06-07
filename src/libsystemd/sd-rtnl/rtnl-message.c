@@ -584,7 +584,9 @@ sd_rtnl_message *sd_rtnl_message_ref(sd_rtnl_message *m) {
 }
 
 sd_rtnl_message *sd_rtnl_message_unref(sd_rtnl_message *m) {
-        if (m && REFCNT_DEC(m->n_ref) == 0) {
+        sd_rtnl_message *t;
+
+        while (m && REFCNT_DEC(m->n_ref) == 0) {
                 unsigned i;
 
                 free(m->hdr);
@@ -592,9 +594,9 @@ sd_rtnl_message *sd_rtnl_message_unref(sd_rtnl_message *m) {
                 for (i = 0; i <= m->n_containers; i++)
                         free(m->rta_offset_tb[i]);
 
-                sd_rtnl_message_unref(m->next);
-
-                free(m);
+                t = m;
+                m = m->next;
+                free(t);
         }
 
         return NULL;
