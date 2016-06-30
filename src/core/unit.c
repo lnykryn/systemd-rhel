@@ -94,6 +94,7 @@ Unit *unit_new(Manager *m, size_t size) {
         u->unit_file_state = _UNIT_FILE_STATE_INVALID;
         u->unit_file_preset = -1;
         u->on_failure_job_mode = JOB_REPLACE;
+        u->sigchldgen = 0;
 
         return u;
 }
