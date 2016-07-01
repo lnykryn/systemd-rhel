@@ -1764,7 +1764,8 @@ static void invoke_sigchld_event(Manager *m, Unit *u, siginfo_t *si) {
                         UNIT_VTABLE(u)->sigchld_event(u, si->si_pid, si->si_code, si->si_status);
                         u->sigchldgen = iteration;
                 } else
-                        log_debug("%s already issued a sigchld this iteration %llu, skipping. Pids still being watched %d", u->id, iteration, set_size(u->pids));
+                        log_debug("%s already issued a sigchld this iteration %" PRIu64 ", skipping. Pids still being watched %d", u->id, iteration, set_size(u->pids));
+
         }
 }
 
