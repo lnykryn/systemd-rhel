@@ -997,6 +997,14 @@ static const char* const busname_state_table[_BUSNAME_STATE_MAX] = {
 
 DEFINE_STRING_TABLE_LOOKUP(busname_state, BusNameState);
 
+static int busname_control_pid(Unit *u) {
+        BusName *n = BUSNAME(u);
+
+        assert(n);
+
+        return n->control_pid;
+}
+
 static const char* const busname_result_table[_BUSNAME_RESULT_MAX] = {
         [BUSNAME_SUCCESS] = "success",
         [BUSNAME_FAILURE_RESOURCES] = "resources",
@@ -1046,6 +1054,8 @@ const UnitVTable busname_vtable = {
         .reset_failed = busname_reset_failed,
 
         .supported = busname_supported,
+
+        .control_pid = busname_control_pid,
 
         .bus_interface = "org.freedesktop.systemd1.BusName",
         .bus_vtable = bus_busname_vtable,
