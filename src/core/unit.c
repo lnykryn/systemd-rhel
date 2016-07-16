@@ -3674,6 +3674,24 @@ int unit_setup_exec_runtime(Unit *u) {
         return exec_runtime_make(rt, unit_get_exec_context(u), u->id);
 }
 
+pid_t unit_control_pid(Unit *u) {
+        assert(u);
+
+        if (UNIT_VTABLE(u)->control_pid)
+                return UNIT_VTABLE(u)->control_pid(u);
+
+        return 0;
+}
+
+pid_t unit_main_pid(Unit *u) {
+        assert(u);
+
+        if (UNIT_VTABLE(u)->main_pid)
+                return UNIT_VTABLE(u)->main_pid(u);
+
+        return 0;
+}
+
 static const char* const unit_active_state_table[_UNIT_ACTIVE_STATE_MAX] = {
         [UNIT_ACTIVE] = "active",
         [UNIT_RELOADING] = "reloading",

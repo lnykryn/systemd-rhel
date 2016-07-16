@@ -1877,6 +1877,14 @@ static const char* const mount_state_table[_MOUNT_STATE_MAX] = {
 
 DEFINE_STRING_TABLE_LOOKUP(mount_state, MountState);
 
+static int mount_control_pid(Unit *u) {
+        Mount *m = MOUNT(u);
+
+        assert(m);
+
+        return m->control_pid;
+}
+
 static const char* const mount_exec_command_table[_MOUNT_EXEC_COMMAND_MAX] = {
         [MOUNT_EXEC_MOUNT] = "ExecMount",
         [MOUNT_EXEC_UNMOUNT] = "ExecUnmount",
@@ -1937,6 +1945,8 @@ const UnitVTable mount_vtable = {
         .sigchld_event = mount_sigchld_event,
 
         .reset_failed = mount_reset_failed,
+
+        .control_pid = mount_control_pid,
 
         .bus_interface = "org.freedesktop.systemd1.Mount",
         .bus_vtable = bus_mount_vtable,

@@ -3068,6 +3068,22 @@ static const char* const service_state_table[_SERVICE_STATE_MAX] = {
 
 DEFINE_STRING_TABLE_LOOKUP(service_state, ServiceState);
 
+static int service_main_pid(Unit *u) {
+        Service *s = SERVICE(u);
+
+        assert(s);
+
+        return s->main_pid;
+}
+
+static int service_control_pid(Unit *u) {
+        Service *s = SERVICE(u);
+
+        assert(s);
+
+        return s->control_pid;
+}
+
 static const char* const service_restart_table[_SERVICE_RESTART_MAX] = {
         [SERVICE_RESTART_NO] = "no",
         [SERVICE_RESTART_ON_SUCCESS] = "on-success",
@@ -3177,6 +3193,9 @@ const UnitVTable service_vtable = {
 
         .notify_cgroup_empty = service_notify_cgroup_empty_event,
         .notify_message = service_notify_message,
+
+        .main_pid = service_main_pid,
+        .control_pid = service_control_pid,
 
         .bus_name_owner_change = service_bus_name_owner_change,
 

@@ -399,6 +399,12 @@ struct UnitVTable {
 
         int (*get_timeout)(Unit *u, uint64_t *timeout);
 
+        /* Returns the main PID if there is any defined, or 0. */
+        pid_t (*main_pid)(Unit *u);
+
+        /* Returns the main PID if there is any defined, or 0. */
+        pid_t (*control_pid)(Unit *u);
+
         /* This is called for each unit type and should be used to
          * enumerate existing devices and load them. However,
          * everything that is loaded here should still stay in
@@ -609,6 +615,9 @@ int unit_kill_context(Unit *u, KillContext *c, KillOperation k, pid_t main_pid, 
 int unit_make_transient(Unit *u);
 
 int unit_require_mounts_for(Unit *u, const char *path);
+
+pid_t unit_control_pid(Unit *u);
+pid_t unit_main_pid(Unit *u);
 
 const char *unit_active_state_to_string(UnitActiveState i) _const_;
 UnitActiveState unit_active_state_from_string(const char *s) _pure_;
