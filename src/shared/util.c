@@ -94,6 +94,7 @@
 #include "def.h"
 #include "sparse-endian.h"
 #include "conf-parser.h"
+#include "cgroup-util.h"
 
 int saved_argc = 0;
 char **saved_argv = NULL;
@@ -8706,4 +8707,87 @@ int extract_many_words(const char **p, const char *separators, ExtractFlags flag
         va_end(ap);
 
         return c;
+}
+
+int parse_percent_unbounded(const char *p) {
+        const char *pc, *n;
+        unsigned v;
+        int r;
+
+        pc = endswith(p, "%");
+        if (!pc)
+                return -EINVAL;
+
+        n = strndupa(p, pc - p);
+        r = safe_atou(n, &v);
+        if (r < 0)
+                return r;
+
+        return (int) v;
+}
+
+int parse_percent(const char *p) {
+        int v;
+
+        v = parse_percent_unbounded(p);
+        if (v > 100)
+                return -ERANGE;
+
+        return v;
+}
+
+uint64_t system_tasks_max(void) {
+
+#if SIZEOF_PID_T == 4
+#define TASKS_MAX ((uint64_t) (INT32_MAX-1))
+#elif SIZEOF_PID_T == 2
+#define TASKS_MAX ((uint64_t) (INT16_MAX-1))
+#else
+#error "Unknown pid_t size"
+#endif
+
+        _cleanup_free_ char *value = NULL, *root = NULL;
+        uint64_t a = TASKS_MAX, b = TASKS_MAX;
+
+        /* Determine the maximum number of tasks that may run on this system. We check three sources to determine this
+         * limit:
+         *
+         * a) the maximum value for the pid_t type
+         * b) the cgroups pids_max attribute for the system
+         * c) the kernel's configure maximum PID value
+         *
+         * And then pick the smallest of the three */
+
+        if (read_one_line_file("/proc/sys/kernel/pid_max", &value) >= 0)
+                (void) safe_atou64(value, &a);
+
+        if (cg_get_root_path(&root) >= 0) {
+                free(value);
+                value = NULL;
+
+                if (cg_get_attribute("pids", root, "pids.max", &value) >= 0)
+                        (void) safe_atou64(value, &b);
+        }
+
+        return MIN3(TASKS_MAX,
+                    a <= 0 ? TASKS_MAX : a,
+                    b <= 0 ? TASKS_MAX : b);
+}
+
+uint64_t system_tasks_max_scale(uint64_t v, uint64_t max) {
+        uint64_t t, m;
+
+        assert(max > 0);
+
+        /* Multiply the system's task value by the fraction v/max. Hence, if max==100 this calculates percentages
+         * relative to the system's maximum number of tasks. Returns UINT64_MAX on overflow. */
+
+        t = system_tasks_max();
+        assert(t > 0);
+
+        m = t * v;
+        if (m / t != v) /* overflow? */
+                return UINT64_MAX;
+
+        return m / max;
 }
