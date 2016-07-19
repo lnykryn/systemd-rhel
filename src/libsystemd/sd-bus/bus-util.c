@@ -1409,7 +1409,26 @@ int bus_append_unit_property_assignment(sd_bus_message *m, const char *assignmen
                 }
 
                 r = sd_bus_message_append(m, "v", "t", (uint64_t) bytes);
+        } else if (streq(field, "TasksMax")) {
+                uint64_t t;
 
+                if (isempty(eq) || streq(eq, "infinity"))
+                        t = (uint64_t) -1;
+                else {
+                        r = parse_percent(eq);
+                        if (r >= 0) {
+                                r = sd_bus_message_append(m, "sv", "TasksMaxScale", "u", (uint32_t) (((uint64_t) UINT32_MAX * r) / 100U));
+                                if (r < 0)
+                                        return bus_log_create_error(r);
+                        } else {
+                                r = safe_atou64(eq, &t);
+                                if (r < 0)
+                                        return log_error_errno(r, "Failed to parse maximum tasks specification %s", assignment);
+                        }
+
+                }
+
+                r = sd_bus_message_append(m, "sv", "TasksMax", "t", t);
         } else if (STR_IN_SET(field, "CPUShares", "BlockIOWeight")) {
                 uint64_t u;
 
