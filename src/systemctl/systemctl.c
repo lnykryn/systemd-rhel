@@ -5333,6 +5333,29 @@ static int mangle_names(char **original_names, char ***mangled_names) {
         return 0;
 }
 
+static int normalize_names(char **names, bool warn_if_path) {
+        char **u;
+        bool was_path = false;
+
+        STRV_FOREACH(u, names) {
+                int r;
+
+                if (!is_path(*u))
+                        continue;
+
+                r = free_and_strdup(u, basename(*u));
+                if (r < 0)
+                        return log_error_errno(r, "Failed to normalize unit file path: %m");
+
+                was_path = true;
+        }
+
+        if (warn_if_path && was_path)
+                log_warning("Warning: Can't execute disable on the unit file path. Proceeding with the unit name.");
+
+        return 0;
+}
+
 static int enable_unit(sd_bus *bus, char **args) {
         _cleanup_strv_free_ char **names = NULL;
         const char *verb = args[0];
@@ -5356,6 +5379,12 @@ static int enable_unit(sd_bus *bus, char **args) {
          * let's finish early */
         if (strv_isempty(names))
                 return 0;
+
+        if (streq(verb, "disable")) {
+                r = normalize_names(names, false);
+                if (r < 0)
+                        return r;
+        }
 
         if (!bus || avoid_bus()) {
                 if (streq(verb, "enable")) {
