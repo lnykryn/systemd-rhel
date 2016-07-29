@@ -6986,6 +6986,22 @@ unsigned long personality_from_string(const char *p) {
 
         if (streq(p, "s390"))
                 return PER_LINUX;
+
+#elif defined(__powerpc64__)
+
+#  if defined(__BIG_ENDIAN__)
+        if (streq(p, "ppc64"))
+                return PER_LINUX;
+#  else
+        if (streq(p, "ppc64le"))
+                return PER_LINUX;
+#  endif
+
+#elif defined(__aarch64__)
+
+        if (streq(p, "aarch64"))
+                return PER_LINUX;
+
 #endif
 
         /* personality(7) documents that 0xffffffffUL is used for
