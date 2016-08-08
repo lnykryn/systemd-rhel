@@ -1910,12 +1910,10 @@ int unit_file_disable(
                 return r;
 
         STRV_FOREACH(i, files) {
+                if (!unit_name_is_valid(*i, UNIT_NAME_ANY))
+                        return -EINVAL;
 
-                if (!is_path(*i))
-                        r = install_info_add(&c, *i, NULL, NULL);
-                else
-                        r = install_info_add(&c, NULL, *i, NULL);
-
+                r = install_info_add(&c, *i, NULL, NULL);
                 if (r < 0)
                         return r;
         }
