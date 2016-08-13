@@ -2270,11 +2270,19 @@ static int preset_prepare_one(
                 const char *name) {
 
         InstallInfo *i;
+        _cleanup_(install_context_done) InstallContext tmp = {};
         int r;
 
-        if (install_info_find(plus, name) ||
-            install_info_find(minus, name))
+        if (install_info_find(plus, name) || install_info_find(minus, name))
                 return 0;
+
+        r = install_info_discover(scope, &tmp, root_dir, paths, name, SEARCH_FOLLOW_CONFIG_SYMLINKS, &i);
+        if (r < 0)
+                return r;
+        if (!streq(name, i->name)) {
+                log_debug("Skipping %s because is an alias for %s", name, i->name);
+                return 0;
+        }
 
         r = unit_file_query_preset(scope, root_dir, name);
         if (r < 0)
