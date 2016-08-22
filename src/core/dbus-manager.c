@@ -1621,6 +1621,7 @@ static int reply_unit_file_changes_and_free(
         if (r < 0)
                 goto fail;
 
+        unit_file_changes_free(changes, n_changes);
         return sd_bus_send(bus, reply, NULL);
 
 fail:
@@ -1874,8 +1875,10 @@ static int method_preset_all_unit_files(sd_bus *bus, sd_bus_message *message, vo
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
         r = unit_file_preset_all(scope, runtime, NULL, mm, force, &changes, &n_changes);
-        if (r < 0)
+        if (r < 0) {
+                unit_file_changes_free(changes, n_changes);
                 return r;
+        }
 
         return reply_unit_file_changes_and_free(m, bus, message, -1, changes, n_changes);
 }
