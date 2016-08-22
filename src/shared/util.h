@@ -740,6 +740,21 @@ int unlink_noerrno(const char *path);
                 _d_;                                            \
         })
 
+#define strjoina(a, ...)                                                \
+        ({                                                              \
+                const char *_appendees_[] = { a, __VA_ARGS__ };         \
+                char *_d_, *_p_;                                        \
+                int _len_ = 0;                                          \
+                unsigned _i_;                                           \
+                for (_i_ = 0; _i_ < ELEMENTSOF(_appendees_) && _appendees_[_i_]; _i_++) \
+                        _len_ += strlen(_appendees_[_i_]);              \
+                _p_ = _d_ = alloca(_len_ + 1);                          \
+                for (_i_ = 0; _i_ < ELEMENTSOF(_appendees_) && _appendees_[_i_]; _i_++) \
+                        _p_ = stpcpy(_p_, _appendees_[_i_]);            \
+                *_p_ = 0;                                               \
+                _d_;                                                    \
+        })
+
 #define procfs_file_alloca(pid, field)                                  \
         ({                                                              \
                 pid_t _pid_ = (pid);                                    \
