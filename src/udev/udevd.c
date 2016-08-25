@@ -697,6 +697,10 @@ static struct udev_ctrl_connection *handle_ctrl_msg(struct udev_ctrl *uctrl) {
         if (i >= 0) {
                 log_debug("udevd message (SET_MAX_CHILDREN) received, children_max=%i", i);
                 arg_children_max = i;
+
+                (void) sd_notifyf(false,
+                                  "READY=1\n"
+                                  "STATUS=Processing with %u children at max", arg_children_max);
         }
 
         if (udev_ctrl_get_ping(ctrl_msg) > 0)
@@ -1271,8 +1275,6 @@ int main(int argc, char *argv[]) {
                 setsid();
 
                 write_string_file("/proc/self/oom_score_adj", "-1000");
-        } else {
-                sd_notify(1, "READY=1");
         }
 
         if (arg_children_max <= 0) {
@@ -1320,6 +1322,10 @@ int main(int argc, char *argv[]) {
         ep_signal.data.fd = fd_signal;
         ep_netlink.data.fd = fd_netlink;
         ep_worker.data.fd = fd_worker;
+
+        (void) sd_notifyf(false,
+                          "READY=1\n"
+                          "STATUS=Processing with %u children at max", arg_children_max);
 
         fd_ep = epoll_create1(EPOLL_CLOEXEC);
         if (fd_ep < 0) {
