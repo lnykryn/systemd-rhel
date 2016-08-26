@@ -90,6 +90,8 @@ struct Mount {
 
         bool sloppy_options;
 
+        bool lazy_unmount;
+
         MountResult result;
         MountResult reload_result;
 
