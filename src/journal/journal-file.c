@@ -911,7 +911,7 @@ int journal_file_find_data_object_with_hash(
                 if (o->object.flags & OBJECT_COMPRESSION_MASK) {
 #if defined(HAVE_XZ) || defined(HAVE_LZ4)
                         uint64_t l;
-                        size_t rsize;
+                        size_t rsize = 0;
 
                         l = le64toh(o->object.size);
                         if (l <= offsetof(Object, data.payload))
@@ -1075,7 +1075,7 @@ static int journal_file_append_data(
 
 #if defined(HAVE_XZ) || defined(HAVE_LZ4)
         if (JOURNAL_FILE_COMPRESS(f) && size >= COMPRESSION_SIZE_THRESHOLD) {
-                size_t rsize;
+                size_t rsize = 0;
 
                 compression = compress_blob(data, size, o->data.payload, &rsize);
 
@@ -1418,10 +1418,6 @@ int journal_file_append_entry(JournalFile *f, const dual_timestamp *ts, const st
                 dual_timestamp_get(&_ts);
                 ts = &_ts;
         }
-
-        if (f->tail_entry_monotonic_valid &&
-            ts->monotonic < le64toh(f->header->tail_entry_monotonic))
-                return -EINVAL;
 
 #ifdef HAVE_GCRYPT
         r = journal_file_maybe_append_tag(f, ts->realtime);
@@ -2903,7 +2899,7 @@ int journal_file_copy_entry(JournalFile *from, JournalFile *to, Object *o, uint6
 
                 if (o->object.flags & OBJECT_COMPRESSION_MASK) {
 #if defined(HAVE_XZ) || defined(HAVE_LZ4)
-                        size_t rsize;
+                        size_t rsize = 0;
 
                         r = decompress_blob(o->object.flags & OBJECT_COMPRESSION_MASK,
                                             o->data.payload, l, &from->compress_buffer, &from->compress_buffer_size, &rsize, 0);

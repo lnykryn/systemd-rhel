@@ -964,7 +964,7 @@ static int link_lldp_status(int argc, char *argv[], void *userdata) {
                                                 return -ENOMEM;
 
                                 } else if (streq(a, "_TTL")) {
-                                        long long unsigned x;
+                                        long long unsigned x = 0;
                                         usec_t time;
 
                                         r = safe_atollu(b, &x);

@@ -471,4 +471,7 @@ static inline bool GID_IS_INVALID(gid_t gid) {
         }                                                       \
         struct __useless_struct_to_allow_trailing_semicolon__
 
+#define CMSG_FOREACH(cmsg, mh)                                          \
+        for ((cmsg) = CMSG_FIRSTHDR(mh); (cmsg); (cmsg) = CMSG_NXTHDR((mh), (cmsg)))
+
 #include "log.h"

@@ -3073,7 +3073,7 @@ int getttyname_malloc(int fd, char **ret) {
 
 int getttyname_harder(int fd, char **r) {
         int k;
-        char *s;
+        char *s = NULL;
 
         k = getttyname_malloc(fd, &s);
         if (k < 0)
@@ -3627,7 +3627,7 @@ char **replace_env_argv(char **argv, char **env) {
                 /* If $FOO appears as single word, replace it by the split up variable */
                 if ((*i)[0] == '$' && (*i)[1] != '{') {
                         char *e;
-                        char **w, **m;
+                        char **w, **m = NULL;
                         unsigned q;
 
                         e = strv_env_get(env, *i+1);
@@ -7887,7 +7887,7 @@ int openpt_in_namespace(pid_t pid, int flags) {
         if (recvmsg(pair[0], &mh, MSG_NOSIGNAL|MSG_CMSG_CLOEXEC) < 0)
                 return -errno;
 
-        for (cmsg = CMSG_FIRSTHDR(&mh); cmsg; cmsg = CMSG_NXTHDR(&mh, cmsg))
+        CMSG_FOREACH(cmsg, &mh)
                 if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
                         int *fds;
                         unsigned n_fds;
@@ -8373,6 +8373,16 @@ ssize_t string_table_lookup(const char * const *table, size_t len, const char *k
                         return (ssize_t)i;
 
         return -1;
+}
+
+void cmsg_close_all(struct msghdr *mh) {
+        struct cmsghdr *cmsg;
+
+        assert(mh);
+
+        CMSG_FOREACH(cmsg, mh)
+                if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS)
+                        close_many((int*) CMSG_DATA(cmsg), (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int));
 }
 
 char *shell_maybe_quote(const char *s) {

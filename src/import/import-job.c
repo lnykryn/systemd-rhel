@@ -80,7 +80,7 @@ void import_job_curl_on_finished(CurlGlue *g, CURL *curl, CURLcode result) {
         long status;
         int r;
 
-        if (curl_easy_getinfo(curl, CURLINFO_PRIVATE, &j) != CURLE_OK)
+        if (curl_easy_getinfo(curl, CURLINFO_PRIVATE, (char **)&j) != CURLE_OK)
                 return;
 
         if (!j || j->state == IMPORT_JOB_DONE || j->state == IMPORT_JOB_FAILED)

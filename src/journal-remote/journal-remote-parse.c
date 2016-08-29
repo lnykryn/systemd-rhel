@@ -316,7 +316,7 @@ int process_data(RemoteSource *source) {
         switch(source->state) {
         case STATE_LINE: {
                 char *line, *sep;
-                size_t n;
+                size_t n = 0;
 
                 assert(source->data_size == 0);
 

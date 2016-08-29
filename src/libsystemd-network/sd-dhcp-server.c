@@ -776,7 +776,7 @@ int dhcp_server_handle_message(sd_dhcp_server *server, DHCPMessage *message,
                 if (pool_offset >= 0 &&
                     server->bound_leases[pool_offset] == existing_lease) {
                         DHCPLease *lease;
-                        usec_t time_now;
+                        usec_t time_now = 0;
 
                         if (!existing_lease) {
                                 lease = new0(DHCPLease, 1);
@@ -903,7 +903,7 @@ static int server_receive_message(sd_event_source *s, int fd,
         else if ((size_t)len < sizeof(DHCPMessage))
                 return 0;
 
-        for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+        CMSG_FOREACH(cmsg, &msg) {
                 if (cmsg->cmsg_level == IPPROTO_IP &&
                     cmsg->cmsg_type == IP_PKTINFO &&
                     cmsg->cmsg_len == CMSG_LEN(sizeof(struct in_pktinfo))) {

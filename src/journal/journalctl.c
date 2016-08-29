@@ -39,7 +39,6 @@
 
 #include "sd-journal.h"
 #include "sd-bus.h"
-
 #include "log.h"
 #include "logs-show.h"
 #include "util.h"
@@ -129,12 +128,12 @@ static enum {
         ACTION_VACUUM,
 } arg_action = ACTION_SHOW;
 
-typedef struct boot_id_t {
+typedef struct BootId {
         sd_id128_t id;
         uint64_t first;
         uint64_t last;
-        LIST_FIELDS(struct boot_id_t, boot_list);
-} boot_id_t;
+        LIST_FIELDS(struct BootId, boot_list);
+} BootId;
 
 static int add_matches_for_device(sd_journal *j, const char *devpath) {
         int r;
@@ -275,8 +274,8 @@ static void help(void) {
                "     --system              Show the system journal\n"
                "     --user                Show the user journal for the current user\n"
                "  -M --machine=CONTAINER   Operate on local container\n"
-               "     --since=DATE          Show entries not older than the specified date\n"
-               "     --until=DATE          Show entries not newer than the specified date\n"
+               "  -S --since=DATE          Show entries not older than the specified date\n"
+               "  -U --until=DATE          Show entries not newer than the specified date\n"
                "  -c --cursor=CURSOR       Show entries starting at the specified cursor\n"
                "     --after-cursor=CURSOR Show entries after the specified cursor\n"
                "     --show-cursor         Print the cursor after all the entries\n"
@@ -348,8 +347,6 @@ static int parse_argv(int argc, char *argv[]) {
                 ARG_VERIFY,
                 ARG_VERIFY_KEY,
                 ARG_DISK_USAGE,
-                ARG_SINCE,
-                ARG_UNTIL,
                 ARG_AFTER_CURSOR,
                 ARG_SHOW_CURSOR,
                 ARG_USER_UNIT,
@@ -399,8 +396,8 @@ static int parse_argv(int argc, char *argv[]) {
                 { "cursor",         required_argument, NULL, 'c'                },
                 { "after-cursor",   required_argument, NULL, ARG_AFTER_CURSOR   },
                 { "show-cursor",    no_argument,       NULL, ARG_SHOW_CURSOR    },
-                { "since",          required_argument, NULL, ARG_SINCE          },
-                { "until",          required_argument, NULL, ARG_UNTIL          },
+                { "since",          required_argument, NULL, 'S'                },
+                { "until",          required_argument, NULL, 'U'                },
                 { "unit",           required_argument, NULL, 'u'                },
                 { "user-unit",      required_argument, NULL, ARG_USER_UNIT      },
                 { "field",          required_argument, NULL, 'F'                },
@@ -422,7 +419,7 @@ static int parse_argv(int argc, char *argv[]) {
         assert(argc >= 0);
         assert(argv);
 
-        while ((c = getopt_long(argc, argv, "hefo:aln::qmb::kD:p:c:t:u:F:xrM:", options, NULL)) >= 0)
+        while ((c = getopt_long(argc, argv, "hefo:aln::qmb::kD:p:c:S:U:t:u:F:xrM:", options, NULL)) >= 0)
 
                 switch (c) {
 
@@ -532,7 +529,7 @@ static int parse_argv(int argc, char *argv[]) {
                         arg_boot = true;
 
                         if (optarg) {
-                                r =  parse_boot_descriptor(optarg, &arg_boot_id, &arg_boot_offset);
+                                r = parse_boot_descriptor(optarg, &arg_boot_id, &arg_boot_offset);
                                 if (r < 0) {
                                         log_error("Failed to parse boot descriptor '%s'", optarg);
                                         return -EINVAL;
@@ -712,7 +709,7 @@ static int parse_argv(int argc, char *argv[]) {
                         break;
                 }
 
-                case ARG_SINCE:
+                case 'S':
                         r = parse_timestamp(optarg, &arg_since);
                         if (r < 0) {
                                 log_error("Failed to parse timestamp: %s", optarg);
@@ -721,7 +718,7 @@ static int parse_argv(int argc, char *argv[]) {
                         arg_since_set = true;
                         break;
 
-                case ARG_UNTIL:
+                case 'U':
                         r = parse_timestamp(optarg, &arg_until);
                         if (r < 0) {
                                 log_error("Failed to parse timestamp: %s", optarg);
@@ -935,16 +932,27 @@ static int add_matches(sd_journal *j, char **args) {
         return 0;
 }
 
+static void boot_id_free_all(BootId *l) {
+
+        while (l) {
+                BootId *i = l;
+                LIST_REMOVE(boot_list, l, i);
+                free(i);
+        }
+}
+
 static int discover_next_boot(sd_journal *j,
-                              boot_id_t **boot,
-                              bool advance_older,
-                              bool read_realtime) {
-        int r;
+                sd_id128_t previous_boot_id,
+                bool advance_older,
+                BootId **ret) {
+
+        _cleanup_free_ BootId *next_boot = NULL;
         char match[9+32+1] = "_BOOT_ID=";
-        _cleanup_free_ boot_id_t *next_boot = NULL;
+        sd_id128_t boot_id;
+        int r;
 
         assert(j);
-        assert(boot);
+        assert(ret);
 
         /* We expect the journal to be on the last position of a boot
          * (in relation to the direction we are going), so that the next
@@ -957,28 +965,39 @@ static int discover_next_boot(sd_journal *j,
          * we can actually advance to a *different* boot. */
         sd_journal_flush_matches(j);
 
-        if (advance_older)
-                r = sd_journal_previous(j);
-        else
-                r = sd_journal_next(j);
-        if (r < 0)
-                return r;
-        else if (r == 0)
-                return 0; /* End of journal, yay. */
+        do {
+                if (advance_older)
+                        r = sd_journal_previous(j);
+                else
+                        r = sd_journal_next(j);
+                if (r < 0)
+                        return r;
+                else if (r == 0)
+                        return 0; /* End of journal, yay. */
 
-        next_boot = new0(boot_id_t, 1);
+                r = sd_journal_get_monotonic_usec(j, NULL, &boot_id);
+                if (r < 0)
+                        return r;
+
+                /* We iterate through this in a loop, until the boot ID differs from the previous one. Note that
+                 * normally, this will only require a single iteration, as we seeked to the last entry of the previous
+                 * boot entry already. However, it might happen that the per-journal-field entry arrays are less
+                 * complete than the main entry array, and hence might reference an entry that's not actually the last
+                 * one of the boot ID as last one. Let's hence use the per-field array is initial seek position to
+                 * speed things up, but let's not trust that it is complete, and hence, manually advance as
+                 * necessary. */
+
+        } while (sd_id128_equal(boot_id, previous_boot_id));
+
+        next_boot = new0(BootId, 1);
         if (!next_boot)
                 return log_oom();
 
-        r = sd_journal_get_monotonic_usec(j, NULL, &next_boot->id);
+        next_boot->id = boot_id;
+
+        r = sd_journal_get_realtime_usec(j, &next_boot->first);
         if (r < 0)
                 return r;
-
-        if (read_realtime) {
-                r = sd_journal_get_realtime_usec(j, &next_boot->first);
-                if (r < 0)
-                        return r;
-        }
 
         /* Now seek to the last occurrence of this boot ID. */
         sd_id128_to_string(next_boot->id, match + 9);
@@ -1002,25 +1021,27 @@ static int discover_next_boot(sd_journal *j,
         else if (r == 0)
                 return -ENODATA; /* This shouldn't happen. We just came from this very boot ID. */
 
-        if (read_realtime) {
-                r = sd_journal_get_realtime_usec(j, &next_boot->last);
-                if (r < 0)
-                        return r;
-        }
+        r = sd_journal_get_realtime_usec(j, &next_boot->last);
+        if (r < 0)
+                return r;
 
-        *boot = next_boot;
+        *ret = next_boot;
         next_boot = NULL;
+
         return 0;
 }
 
-static int get_boots(sd_journal *j,
-                     boot_id_t **boots,
-                     boot_id_t *query_ref_boot,
-                     int ref_boot_offset) {
+static int get_boots(
+                sd_journal *j,
+                BootId **boots,
+                BootId *query_ref_boot,
+                int ref_boot_offset) {
+
         bool skip_once;
         int r, count = 0;
-        boot_id_t *head = NULL, *tail = NULL;
+        BootId *head = NULL, *tail = NULL;
         const bool advance_older = query_ref_boot && ref_boot_offset <= 0;
+        sd_id128_t previous_boot_id;
 
         assert(j);
 
@@ -1074,19 +1095,20 @@ static int get_boots(sd_journal *j,
                 /* No sd_journal_next/previous here. */
         }
 
-        while (true) {
-                _cleanup_free_ boot_id_t *current = NULL;
+        previous_boot_id = SD_ID128_NULL;
+        for (;;) {
+                _cleanup_free_ BootId *current = NULL;
 
-                r = discover_next_boot(j, &current, advance_older, !query_ref_boot);
+                r = discover_next_boot(j, previous_boot_id, advance_older, &current);
                 if (r < 0) {
-                        boot_id_t *id, *id_next;
-                        LIST_FOREACH_SAFE(boot_list, id, id_next, head)
-                                free(id);
+                        boot_id_free_all(head);
                         return r;
                 }
 
                 if (!current)
                         break;
+
+                previous_boot_id = current->id;
 
                 if (query_ref_boot) {
                         if (!skip_once)
@@ -1117,7 +1139,7 @@ finish:
 
 static int list_boots(sd_journal *j) {
         int w, i, count;
-        boot_id_t *id, *id_next, *all_ids;
+        BootId *id, *all_ids;
 
         assert(j);
 
@@ -1131,7 +1153,7 @@ static int list_boots(sd_journal *j) {
         w = DECIMAL_STR_WIDTH(count - 1) + 1;
 
         i = 0;
-        LIST_FOREACH_SAFE(boot_list, id, id_next, all_ids) {
+        LIST_FOREACH(boot_list, id, all_ids) {
                 char a[FORMAT_TIMESTAMP_MAX], b[FORMAT_TIMESTAMP_MAX];
 
                 printf("% *i " SD_ID128_FORMAT_STR " %s—%s\n",
@@ -1140,8 +1162,9 @@ static int list_boots(sd_journal *j) {
                        format_timestamp_maybe_utc(a, sizeof(a), id->first),
                        format_timestamp_maybe_utc(b, sizeof(b), id->last));
                 i++;
-                free(id);
         }
+
+        boot_id_free_all(all_ids);
 
         return 0;
 }
@@ -1149,7 +1172,7 @@ static int list_boots(sd_journal *j) {
 static int add_boot(sd_journal *j) {
         char match[9+32+1] = "_BOOT_ID=";
         int r;
-        boot_id_t ref_boot_id = {};
+        BootId ref_boot_id = {};
 
         assert(j);
 
@@ -1166,11 +1189,10 @@ static int add_boot(sd_journal *j) {
                 const char *reason = (r == 0) ? "No such boot ID in journal" : strerror(-r);
 
                 if (sd_id128_is_null(arg_boot_id))
-                        log_error("Data from the specified boot (%+i) is not available: %s",
-                                  arg_boot_offset, reason);
+                        log_error("Failed to look up boot %+i: %s", arg_boot_offset, reason);
                 else
-                        log_error("Data from the specified boot ("SD_ID128_FORMAT_STR") is not available: %s",
-                                  SD_ID128_FORMAT_VAL(arg_boot_id), reason);
+                        log_error("Failed to look up boot ID "SD_ID128_FORMAT_STR"%+i: %s",
+                                  SD_ID128_FORMAT_VAL(arg_boot_id), arg_boot_offset, reason);
 
                 return r == 0 ? -ENODATA : r;
         }
@@ -1644,7 +1666,7 @@ static int verify(sd_journal *j) {
 
         ORDERED_HASHMAP_FOREACH(f, j->files, i) {
                 int k;
-                usec_t first, validated, last;
+                usec_t first = 0, validated = 0, last = 0;
 
 #ifdef HAVE_GCRYPT
                 if (!arg_verify_key && JOURNAL_HEADER_SEALED(f->header))
@@ -1680,61 +1702,76 @@ static int verify(sd_journal *j) {
         return r;
 }
 
-#ifdef HAVE_ACL
 static int access_check_var_log_journal(sd_journal *j) {
+#ifdef HAVE_ACL
         _cleanup_strv_free_ char **g = NULL;
-        bool have_access;
+        const char* dir;
+#endif
         int r;
 
         assert(j);
 
-        have_access = in_group("systemd-journal") > 0;
+        if (arg_quiet)
+                return 0;
 
-        if (!have_access) {
-                const char* dir;
+        /* If we are root, we should have access, don't warn. */
+        if (getuid() == 0)
+                return 0;
 
-                if (access("/run/log/journal", F_OK) >= 0)
-                        dir = "/run/log/journal";
-                else
-                        dir = "/var/log/journal";
+        /* If we are in the 'systemd-journal' group, we should have
+         * access too. */
+        r = in_group("systemd-journal");
+        if (r < 0)
+                return log_error_errno(r, "Failed to check if we are in the 'systemd-journal' group: %m");
+        if (r > 0)
+                return 0;
 
-                /* Let's enumerate all groups from the default ACL of
-                 * the directory, which generally should allow access
-                 * to most journal files too */
-                r = search_acl_groups(&g, dir, &have_access);
+#ifdef HAVE_ACL
+        if (laccess("/run/log/journal", F_OK) >= 0)
+                dir = "/run/log/journal";
+        else
+                dir = "/var/log/journal";
+
+        /* If we are in any of the groups listed in the journal ACLs,
+         * then all is good, too. Let's enumerate all groups from the
+         * default ACL of the directory, which generally should allow
+         * access to most journal files too. */
+        r = acl_search_groups(dir, &g);
+        if (r < 0)
+                return log_error_errno(r, "Failed to search journal ACL: %m");
+        if (r > 0)
+                return 0;
+
+        /* Print a pretty list, if there were ACLs set. */
+        if (!strv_isempty(g)) {
+                _cleanup_free_ char *s = NULL;
+
+                /* Thre are groups in the ACL, let's list them */
+                r = strv_extend(&g, "systemd-journal");
                 if (r < 0)
-                        return r;
+                        return log_oom();
+
+                strv_sort(g);
+                strv_uniq(g);
+
+                s = strv_join(g, "', '");
+                if (!s)
+                        return log_oom();
+
+                log_notice("Hint: You are currently not seeing messages from other users and the system.\n"
+                           "      Users in groups '%s' can see all messages.\n"
+                           "      Pass -q to turn off this notice.", s);
+                return 1;
         }
-
-        if (!have_access) {
-
-                if (strv_isempty(g))
-                        log_notice("Hint: You are currently not seeing messages from other users and the system.\n"
-                                   "      Users in the 'systemd-journal' group can see all messages. Pass -q to\n"
-                                   "      turn off this notice.");
-                else {
-                        _cleanup_free_ char *s = NULL;
-
-                        r = strv_extend(&g, "systemd-journal");
-                        if (r < 0)
-                                return log_oom();
-
-                        strv_sort(g);
-                        strv_uniq(g);
-
-                        s = strv_join(g, "', '");
-                        if (!s)
-                                return log_oom();
-
-                        log_notice("Hint: You are currently not seeing messages from other users and the system.\n"
-                                   "      Users in groups '%s' can see all messages.\n"
-                                   "      Pass -q to turn off this notice.", s);
-                }
-        }
-
-        return 0;
-}
 #endif
+
+        /* If no ACLs were found, print a short version of the message. */
+        log_notice("Hint: You are currently not seeing messages from other users and the system.\n"
+                   "      Users in the 'systemd-journal' group can see all messages. Pass -q to\n"
+                   "      turn off this notice.");
+
+        return 1;
+}
 
 static int access_check(sd_journal *j) {
         Iterator it;
@@ -1746,30 +1783,15 @@ static int access_check(sd_journal *j) {
         if (set_isempty(j->errors)) {
                 if (ordered_hashmap_isempty(j->files))
                         log_notice("No journal files were found.");
+
                 return 0;
         }
 
         if (set_contains(j->errors, INT_TO_PTR(-EACCES))) {
-#ifdef HAVE_ACL
-                /* If /run/log/journal or /var/log/journal exist, try
-                   to pring a nice notice if the user lacks access to it. */
-                if (!arg_quiet && geteuid() != 0) {
-                        r = access_check_var_log_journal(j);
-                        if (r < 0)
-                                return r;
-                }
-#else
-                if (geteuid() != 0 && in_group("systemd-journal") <= 0) {
-                        log_error("Unprivileged users cannot access messages. Users in the 'systemd-journal' group\n"
-                                  "group may access messages.");
-                        return -EACCES;
-                }
-#endif
+                (void) access_check_var_log_journal(j);
 
-                if (ordered_hashmap_isempty(j->files)) {
-                        log_error("No journal files were opened due to insufficient permissions.");
-                        r = -EACCES;
-                }
+                if (ordered_hashmap_isempty(j->files))
+                        r = log_error_errno(EACCES, "No journal files were opened due to insufficient permissions.");
         }
 
         SET_FOREACH(code, j->errors, it) {
@@ -1778,8 +1800,12 @@ static int access_check(sd_journal *j) {
                 err = -PTR_TO_INT(code);
                 assert(err > 0);
 
-                if (err != EACCES)
-                        log_warning_errno(err, "Error was encountered while opening journal files: %m");
+                if (err == EACCES)
+                        continue;
+
+                log_warning_errno(err, "Error was encountered while opening journal files: %m");
+                if (r == 0)
+                        r = -err;
         }
 
         return r;
@@ -1926,12 +1952,12 @@ int main(int argc, char *argv[]) {
         if (r < 0) {
                 log_error_errno(r, "Failed to open %s: %m",
                                 arg_directory ? arg_directory : arg_file ? "files" : "journal");
-                return EXIT_FAILURE;
+                goto finish;
         }
 
         r = access_check(j);
         if (r < 0)
-                return EXIT_FAILURE;
+                goto finish;
 
         if (arg_action == ACTION_VERIFY) {
                 r = verify(j);
@@ -1940,7 +1966,8 @@ int main(int argc, char *argv[]) {
 
         if (arg_action == ACTION_PRINT_HEADER) {
                 journal_print_header(j);
-                return EXIT_SUCCESS;
+                r = 0;
+                goto finish;
         }
 
         if (arg_action == ACTION_DISK_USAGE) {
@@ -1949,11 +1976,11 @@ int main(int argc, char *argv[]) {
 
                 r = sd_journal_get_usage(j, &bytes);
                 if (r < 0)
-                        return EXIT_FAILURE;
+                        goto finish;
 
                 printf("Archived and active journals take up %s on disk.\n",
                        format_bytes(sbytes, sizeof(sbytes), bytes));
-                return EXIT_SUCCESS;
+                goto finish;
         }
 
         if (arg_action == ACTION_VACUUM) {
@@ -1973,7 +2000,7 @@ int main(int argc, char *argv[]) {
                         }
                 }
 
-                return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+                goto finish;
         }
 
         if (arg_action == ACTION_LIST_BOOTS) {
@@ -1992,37 +2019,34 @@ int main(int argc, char *argv[]) {
          * It may need to seek the journal to find parent boot IDs. */
         r = add_boot(j);
         if (r < 0)
-                return EXIT_FAILURE;
+                goto finish;
 
         r = add_dmesg(j);
         if (r < 0)
-                return EXIT_FAILURE;
+                goto finish;
 
         r = add_units(j);
-        strv_free(arg_system_units);
-        strv_free(arg_user_units);
-
         if (r < 0) {
                 log_error_errno(r, "Failed to add filter for units: %m");
-                return EXIT_FAILURE;
+                goto finish;
         }
 
         r = add_syslog_identifier(j);
         if (r < 0) {
                 log_error_errno(r, "Failed to add filter for syslog identifiers: %m");
-                return EXIT_FAILURE;
+                goto finish;
         }
 
         r = add_priorities(j);
         if (r < 0) {
                 log_error_errno(r, "Failed to add filter for priorities: %m");
-                return EXIT_FAILURE;
+                goto finish;
         }
 
         r = add_matches(j, argv + optind);
         if (r < 0) {
                 log_error_errno(r, "Failed to add filters: %m");
-                return EXIT_FAILURE;
+                goto finish;
         }
 
         if (_unlikely_(log_get_max_level() >= LOG_DEBUG)) {
@@ -2039,13 +2063,13 @@ int main(int argc, char *argv[]) {
                 r = sd_journal_set_data_threshold(j, 0);
                 if (r < 0) {
                         log_error("Failed to unset data size threshold");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
 
                 r = sd_journal_query_unique(j, arg_field);
                 if (r < 0) {
                         log_error_errno(r, "Failed to query unique data objects: %m");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
 
                 SD_JOURNAL_FOREACH_UNIQUE(j, data, size) {
@@ -2063,22 +2087,24 @@ int main(int argc, char *argv[]) {
                         n_shown ++;
                 }
 
-                return EXIT_SUCCESS;
+                r = 0;
+                goto finish;
         }
 
         /* Opening the fd now means the first sd_journal_wait() will actually wait */
         if (arg_follow) {
                 r = sd_journal_get_fd(j);
                 if (r < 0)
-                        return EXIT_FAILURE;
+                        goto finish;
         }
 
         if (arg_cursor || arg_after_cursor) {
                 r = sd_journal_seek_cursor(j, arg_cursor ?: arg_after_cursor);
                 if (r < 0) {
                         log_error_errno(r, "Failed to seek to cursor: %m");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
+
                 if (!arg_reverse)
                         r = sd_journal_next_skip(j, 1 + !!arg_after_cursor);
                 else
@@ -2096,7 +2122,7 @@ int main(int argc, char *argv[]) {
                 r = sd_journal_seek_realtime_usec(j, arg_since);
                 if (r < 0) {
                         log_error_errno(r, "Failed to seek to date: %m");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
                 r = sd_journal_next(j);
 
@@ -2104,7 +2130,7 @@ int main(int argc, char *argv[]) {
                 r = sd_journal_seek_realtime_usec(j, arg_until);
                 if (r < 0) {
                         log_error_errno(r, "Failed to seek to date: %m");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
                 r = sd_journal_previous(j);
 
@@ -2112,7 +2138,7 @@ int main(int argc, char *argv[]) {
                 r = sd_journal_seek_tail(j);
                 if (r < 0) {
                         log_error_errno(r, "Failed to seek to tail: %m");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
 
                 r = sd_journal_previous_skip(j, arg_lines);
@@ -2121,7 +2147,7 @@ int main(int argc, char *argv[]) {
                 r = sd_journal_seek_tail(j);
                 if (r < 0) {
                         log_error_errno(r, "Failed to seek to tail: %m");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
 
                 r = sd_journal_previous(j);
@@ -2130,7 +2156,7 @@ int main(int argc, char *argv[]) {
                 r = sd_journal_seek_head(j);
                 if (r < 0) {
                         log_error_errno(r, "Failed to seek to head: %m");
-                        return EXIT_FAILURE;
+                        goto finish;
                 }
 
                 r = sd_journal_next(j);
@@ -2138,7 +2164,7 @@ int main(int argc, char *argv[]) {
 
         if (r < 0) {
                 log_error_errno(r, "Failed to iterate through journal: %m");
-                return EXIT_FAILURE;
+                goto finish;
         }
 
         if (r == 0) {
@@ -2276,6 +2302,10 @@ finish:
         pager_close();
 
         strv_free(arg_file);
+
+        strv_free(arg_syslog_identifier);
+        strv_free(arg_system_units);
+        strv_free(arg_user_units);
 
         return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }

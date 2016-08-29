@@ -317,7 +317,7 @@ void server_process_syslog_message(
         size_t label_len) {
 
         char syslog_priority[sizeof("PRIORITY=") + DECIMAL_STR_MAX(int)],
-             syslog_facility[sizeof("SYSLOG_FACILITY") + DECIMAL_STR_MAX(int)];
+             syslog_facility[sizeof("SYSLOG_FACILITY=") + DECIMAL_STR_MAX(int)];
         const char *message = NULL, *syslog_identifier = NULL, *syslog_pid = NULL;
         struct iovec iovec[N_IOVEC_META_FIELDS + 6];
         unsigned n = 0;
@@ -348,11 +348,11 @@ void server_process_syslog_message(
 
         IOVEC_SET_STRING(iovec[n++], "_TRANSPORT=syslog");
 
-        sprintf(syslog_priority, "PRIORITY=%i", priority & LOG_PRIMASK);
+        snprintf(syslog_priority, sizeof(syslog_priority), "PRIORITY=%i", priority & LOG_PRIMASK);
         IOVEC_SET_STRING(iovec[n++], syslog_priority);
 
         if (priority & LOG_FACMASK) {
-                sprintf(syslog_facility, "SYSLOG_FACILITY=%i", LOG_FAC(priority));
+                snprintf(syslog_facility, sizeof(syslog_facility), "SYSLOG_FACILITY=%i", LOG_FAC(priority));
                 IOVEC_SET_STRING(iovec[n++], syslog_facility);
         }
 
@@ -420,6 +420,10 @@ int server_open_syslog_socket(Server *s) {
         r = sd_event_add_io(s->event, &s->syslog_event_source, s->syslog_fd, EPOLLIN, server_process_datagram, s);
         if (r < 0)
                 return log_error_errno(r, "Failed to add syslog server fd to event loop: %m");
+
+        r = sd_event_source_set_priority(s->syslog_event_source, SD_EVENT_PRIORITY_NORMAL+5);
+        if (r < 0)
+                return log_error_errno(r, "Failed to adjust syslog event source priority: %m");
 
         return 0;
 }
