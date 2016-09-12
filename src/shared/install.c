@@ -1253,12 +1253,15 @@ static int install_info_traverse(
                         if (r < 0)
                                 return r;
 
+                        /* Try again, with the new target we found. */
                         r = unit_file_search(c, i, paths, root_dir, flags);
-                        if (r < 0)
-                                return r;
+                        if (r == -ENOENT)
+                                /* Translate error code to highlight this specific case */
+                                return -ENOLINK;
                 }
 
-                /* Try again, with the new target we found. */
+                if (r < 0)
+                        return r;
         }
 
         if (ret)
@@ -1528,7 +1531,9 @@ static int install_context_mark_for_removal(
                         return r;
 
                 r = install_info_traverse(scope, c, root_dir, paths, i, SEARCH_LOAD|SEARCH_FOLLOW_CONFIG_SYMLINKS, NULL);
-                if (r < 0)
+                if (r == -ENOLINK)
+                        return 0;
+                else if (r < 0)
                         return r;
 
                 if (i->type != UNIT_FILE_TYPE_REGULAR)
@@ -2402,7 +2407,9 @@ int unit_file_preset_all(
                                 continue;
 
                         r = preset_prepare_one(scope, &plus, &minus, &paths, root_dir, mode, de->d_name);
-                        if (r < 0)
+                        if (r == -ENOLINK)
+                                continue;
+                        else if (r < 0)
                                 return r;
                 }
         }
