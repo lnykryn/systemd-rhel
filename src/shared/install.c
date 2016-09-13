@@ -1253,12 +1253,15 @@ static int install_info_traverse(
                         if (r < 0)
                                 return r;
 
+                        /* Try again, with the new target we found. */
                         r = unit_file_search(c, i, paths, root_dir, flags);
-                        if (r < 0)
-                                return r;
+                        if (r == -ENOENT)
+                                /* Translate error code to highlight this specific case */
+                                return -ENOLINK;
                 }
 
-                /* Try again, with the new target we found. */
+                if (r < 0)
+                        return r;
         }
 
         if (ret)
@@ -1528,7 +1531,9 @@ static int install_context_mark_for_removal(
                         return r;
 
                 r = install_info_traverse(scope, c, root_dir, paths, i, SEARCH_LOAD|SEARCH_FOLLOW_CONFIG_SYMLINKS, NULL);
-                if (r < 0)
+                if (r == -ENOLINK)
+                        return 0;
+                else if (r < 0)
                         return r;
 
                 if (i->type != UNIT_FILE_TYPE_REGULAR)
@@ -2265,11 +2270,19 @@ static int preset_prepare_one(
                 const char *name) {
 
         InstallInfo *i;
+        _cleanup_(install_context_done) InstallContext tmp = {};
         int r;
 
-        if (install_info_find(plus, name) ||
-            install_info_find(minus, name))
+        if (install_info_find(plus, name) || install_info_find(minus, name))
                 return 0;
+
+        r = install_info_discover(scope, &tmp, root_dir, paths, name, SEARCH_FOLLOW_CONFIG_SYMLINKS, &i);
+        if (r < 0)
+                return r;
+        if (!streq(name, i->name)) {
+                log_debug("Skipping %s because is an alias for %s", name, i->name);
+                return 0;
+        }
 
         r = unit_file_query_preset(scope, root_dir, name);
         if (r < 0)
@@ -2402,6 +2415,12 @@ int unit_file_preset_all(
                                 continue;
 
                         r = preset_prepare_one(scope, &plus, &minus, &paths, root_dir, mode, de->d_name);
+                        if (r == -ESHUTDOWN)
+                                r = unit_file_changes_add(changes, n_changes,
+                                                          UNIT_FILE_IS_MASKED, de->d_name, NULL);
+                        else if (r == -ENOLINK)
+                                r = unit_file_changes_add(changes, n_changes,
+                                                          UNIT_FILE_IS_DANGLING, de->d_name, NULL);
                         if (r < 0)
                                 return r;
                 }
@@ -2535,6 +2554,8 @@ DEFINE_STRING_TABLE_LOOKUP(unit_file_state, UnitFileState);
 static const char* const unit_file_change_type_table[_UNIT_FILE_CHANGE_TYPE_MAX] = {
         [UNIT_FILE_SYMLINK] = "symlink",
         [UNIT_FILE_UNLINK] = "unlink",
+        [UNIT_FILE_IS_MASKED] = "masked",
+        [UNIT_FILE_IS_DANGLING] = "dangling",
 };
 
 DEFINE_STRING_TABLE_LOOKUP(unit_file_change_type, UnitFileChangeType);

@@ -60,9 +60,15 @@ typedef enum UnitFilePresetMode {
 typedef enum UnitFileChangeType {
         UNIT_FILE_SYMLINK,
         UNIT_FILE_UNLINK,
+        UNIT_FILE_IS_MASKED,
+        UNIT_FILE_IS_DANGLING,
         _UNIT_FILE_CHANGE_TYPE_MAX,
         _UNIT_FILE_CHANGE_TYPE_INVALID = -1
 } UnitFileChangeType;
+
+static inline bool unit_file_change_is_modification(UnitFileChangeType type) {
+        return IN_SET(type, UNIT_FILE_SYMLINK, UNIT_FILE_UNLINK);
+}
 
 typedef struct UnitFileChange {
         UnitFileChangeType type;
