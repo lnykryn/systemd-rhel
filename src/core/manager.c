@@ -1614,13 +1614,12 @@ static int manager_dispatch_cgroups_agent_fd(sd_event_source *source, int fd, ui
         return 0;
 }
 
-static void manager_invoke_notify_message(Manager *m, Unit *u, pid_t pid, char *buf, size_t n, FDSet *fds) {
+static void manager_invoke_notify_message(Manager *m, Unit *u, pid_t pid, const char *buf, FDSet *fds) {
         _cleanup_strv_free_ char **tags = NULL;
 
         assert(m);
         assert(u);
         assert(buf);
-        assert(n > 0);
 
         tags = strv_split(buf, "\n\r");
         if (!tags) {
@@ -1682,10 +1681,6 @@ static int manager_dispatch_notify_fd(sd_event_source *source, int fd, uint32_t 
                  * example... */
                 return 0;
         }
-        if (n == 0) {
-                log_debug("Got zero-length notification message. Ignoring.");
-                return 0;
-        }
 
         CMSG_FOREACH(cmsg, &msghdr) {
                 if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
@@ -1722,25 +1717,27 @@ static int manager_dispatch_notify_fd(sd_event_source *source, int fd, uint32_t 
                 return 0;
         }
 
+        /* The message should be a string. Here we make sure it's NUL-terminated,
+         * but only the part until first NUL will be used anyway. */
         buf[n] = 0;
 
         /* Notify every unit that might be interested, but try
          * to avoid notifying the same one multiple times. */
         u1 = manager_get_unit_by_pid(m, ucred->pid);
         if (u1) {
-                manager_invoke_notify_message(m, u1, ucred->pid, buf, n, fds);
+                manager_invoke_notify_message(m, u1, ucred->pid, buf, fds);
                 found = true;
         }
 
         u2 = hashmap_get(m->watch_pids1, LONG_TO_PTR(ucred->pid));
         if (u2 && u2 != u1) {
-                manager_invoke_notify_message(m, u2, ucred->pid, buf, n, fds);
+                manager_invoke_notify_message(m, u2, ucred->pid, buf, fds);
                 found = true;
         }
 
         u3 = hashmap_get(m->watch_pids2, LONG_TO_PTR(ucred->pid));
         if (u3 && u3 != u2 && u3 != u1) {
-                manager_invoke_notify_message(m, u3, ucred->pid, buf, n, fds);
+                manager_invoke_notify_message(m, u3, ucred->pid, buf, fds);
                 found = true;
         }
 
