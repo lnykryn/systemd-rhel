@@ -1637,7 +1637,7 @@ static void manager_invoke_notify_message(Manager *m, Unit *u, pid_t pid, const 
                 x = cescape(buf);
                 if (x)
                         y = ellipsize(x, 20, 90);
-                log_unit_debug(u, "Got notification message \"%s\", ignoring.", strnull(y));
+                log_unit_debug(u->id, "Got notification message \"%s\", ignoring.", strnull(y));
         }
 }
 
