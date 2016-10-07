@@ -64,6 +64,14 @@ typedef enum ManagerExitCode {
         _MANAGER_EXIT_CODE_INVALID = -1
 } ManagerExitCode;
 
+typedef enum CADBurstAction {
+        CAD_BURST_ACTION_IGNORE,
+        CAD_BURST_ACTION_REBOOT,
+        CAD_BURST_ACTION_POWEROFF,
+        _CAD_BURST_ACTION_MAX,
+        _CAD_BURST_ACTION_INVALID = -1
+} CADBurstAction;
+
 typedef enum StatusType {
         STATUS_TYPE_EPHEMERAL,
         STATUS_TYPE_NORMAL,
@@ -300,8 +308,9 @@ struct Manager {
         /* Used for processing polkit authorization responses */
         Hashmap *polkit_registry;
 
-        /* When the user hits C-A-D more than 7 times per 2s, reboot immediately... */
+        /* When the user hits C-A-D more than 7 times per 2s, do something immediately... */
         RateLimit ctrl_alt_del_ratelimit;
+        CADBurstAction cad_burst_action;
 };
 
 int manager_new(SystemdRunningAs running_as, bool test_run, Manager **m);
@@ -372,3 +381,6 @@ ManagerState manager_state(Manager *m);
 
 const char *manager_state_to_string(ManagerState m) _const_;
 ManagerState manager_state_from_string(const char *s) _pure_;
+
+const char *cad_burst_action_to_string(CADBurstAction a) _const_;
+CADBurstAction cad_burst_action_from_string(const char *s) _pure_;

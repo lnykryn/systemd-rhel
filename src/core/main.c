@@ -115,6 +115,7 @@ static FILE* arg_serialization = NULL;
 static bool arg_default_cpu_accounting = false;
 static bool arg_default_blockio_accounting = false;
 static bool arg_default_memory_accounting = false;
+static CADBurstAction arg_cad_burst_action = CAD_BURST_ACTION_REBOOT;
 
 static void nop_handler(int sig) {}
 
@@ -625,6 +626,8 @@ static int config_parse_join_controllers(const char *unit,
         return 0;
 }
 
+static DEFINE_CONFIG_PARSE_ENUM(config_parse_cad_burst_action, cad_burst_action, CADBurstAction, "Failed to parse service restart specifier");
+
 static int parse_config_file(void) {
 
         const ConfigTableItem items[] = {
@@ -673,6 +676,7 @@ static int parse_config_file(void) {
                 { "Manager", "DefaultCPUAccounting",      config_parse_bool,             0, &arg_default_cpu_accounting            },
                 { "Manager", "DefaultBlockIOAccounting",  config_parse_bool,             0, &arg_default_blockio_accounting        },
                 { "Manager", "DefaultMemoryAccounting",   config_parse_bool,             0, &arg_default_memory_accounting         },
+                { "Manager", "CtrlAltDelBurstAction",     config_parse_cad_burst_action, 0, &arg_cad_burst_action},
                 {}
         };
 
@@ -1690,6 +1694,7 @@ int main(int argc, char *argv[]) {
         m->initrd_timestamp = initrd_timestamp;
         m->security_start_timestamp = security_start_timestamp;
         m->security_finish_timestamp = security_finish_timestamp;
+        m->cad_burst_action = arg_cad_burst_action;
 
         manager_set_default_rlimits(m, arg_default_rlimit);
         manager_environment_add(m, NULL, arg_default_environment);
