@@ -449,3 +449,13 @@ char **strv_env_clean_with_callback(char **e, void (*invalid_callback)(const cha
 
         return e;
 }
+
+int getenv_bool(const char *p) {
+        const char *e;
+
+        e = getenv(p);
+        if (!e)
+                return -ENXIO;
+
+        return parse_boolean(e);
+}
