@@ -77,6 +77,7 @@
 #include "ima-setup.h"
 #include "smack-setup.h"
 #include "kmod-setup.h"
+#include "emergency-action.h"
 
 static enum {
         ACTION_RUN,
@@ -115,7 +116,7 @@ static FILE* arg_serialization = NULL;
 static bool arg_default_cpu_accounting = false;
 static bool arg_default_blockio_accounting = false;
 static bool arg_default_memory_accounting = false;
-static CADBurstAction arg_cad_burst_action = CAD_BURST_ACTION_REBOOT;
+static EmergencyAction arg_cad_burst_action = EMERGENCY_ACTION_REBOOT_FORCE;
 
 static void nop_handler(int sig) {}
 
@@ -626,8 +627,6 @@ static int config_parse_join_controllers(const char *unit,
         return 0;
 }
 
-static DEFINE_CONFIG_PARSE_ENUM(config_parse_cad_burst_action, cad_burst_action, CADBurstAction, "Failed to parse service restart specifier");
-
 static int parse_config_file(void) {
 
         const ConfigTableItem items[] = {
@@ -676,7 +675,7 @@ static int parse_config_file(void) {
                 { "Manager", "DefaultCPUAccounting",      config_parse_bool,             0, &arg_default_cpu_accounting            },
                 { "Manager", "DefaultBlockIOAccounting",  config_parse_bool,             0, &arg_default_blockio_accounting        },
                 { "Manager", "DefaultMemoryAccounting",   config_parse_bool,             0, &arg_default_memory_accounting         },
-                { "Manager", "CtrlAltDelBurstAction",     config_parse_cad_burst_action, 0, &arg_cad_burst_action},
+                { "Manager", "CtrlAltDelBurstAction",     config_parse_emergency_action, 0, &arg_cad_burst_action                  },
                 {}
         };
 
