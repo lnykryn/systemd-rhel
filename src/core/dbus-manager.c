@@ -41,6 +41,11 @@
 #include "dbus-execute.h"
 #include "bus-common-errors.h"
 
+static UnitFileFlags unit_file_bools_to_flags(bool runtime, bool force) {
+        return (runtime ? UNIT_FILE_RUNTIME : 0) |
+               (force   ? UNIT_FILE_FORCE   : 0);
+}
+
 static int property_get_version(
                 sd_bus *bus,
                 const char *path,
@@ -1647,7 +1652,7 @@ static int method_enable_unit_files_generic(
                 sd_bus_message *message,
                 Manager *m,
                 const char *verb,
-                int (*call)(UnitFileScope scope, bool runtime, const char *root_dir, char *files[], bool force, UnitFileChange **changes, unsigned *n_changes),
+                int (*call)(UnitFileScope scope, UnitFileFlags flags, const char *root_dir, char *files[], UnitFileChange **changes, unsigned *n_changes),
                 bool carries_install_info,
                 sd_bus_error *error) {
 
@@ -1655,6 +1660,7 @@ static int method_enable_unit_files_generic(
         UnitFileChange *changes = NULL;
         unsigned n_changes = 0;
         UnitFileScope scope;
+        UnitFileFlags flags;
         int runtime, force, r;
 
         assert(bus);
@@ -1676,12 +1682,13 @@ static int method_enable_unit_files_generic(
                 return r;
 
         r = mac_selinux_unit_access_check_strv(l, message, m, verb, error);
+        flags = unit_file_bools_to_flags(runtime, force);
         if (r < 0)
                 return r;
 
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
-        r = call(scope, runtime, NULL, l, force, &changes, &n_changes);
+        r = call(scope, flags, NULL, l, &changes, &n_changes);
         if (r < 0)
                 return r;
 
@@ -1700,8 +1707,8 @@ static int method_link_unit_files(sd_bus *bus, sd_bus_message *message, void *us
         return method_enable_unit_files_generic(bus, message, userdata, "enable", unit_file_link, false, error);
 }
 
-static int unit_file_preset_without_mode(UnitFileScope scope, bool runtime, const char *root_dir, char **files, bool force, UnitFileChange **changes, unsigned *n_changes) {
-        return unit_file_preset(scope, runtime, root_dir, files, UNIT_FILE_PRESET_FULL, force, changes, n_changes);
+static int unit_file_preset_without_mode(UnitFileScope scope, UnitFileFlags flags, const char *root_dir, char **files, UnitFileChange **changes, unsigned *n_changes) {
+        return unit_file_preset(scope, flags, root_dir, files, UNIT_FILE_PRESET_FULL, changes, n_changes);
 }
 
 static int method_preset_unit_files(sd_bus *bus, sd_bus_message *message, void *userdata, sd_bus_error *error) {
@@ -1721,6 +1728,7 @@ static int method_preset_unit_files_with_mode(sd_bus *bus, sd_bus_message *messa
         UnitFilePresetMode mm;
         UnitFileScope scope;
         int runtime, force, r;
+        UnitFileFlags flags;
         const char *mode;
 
         assert(bus);
@@ -1741,6 +1749,8 @@ static int method_preset_unit_files_with_mode(sd_bus *bus, sd_bus_message *messa
         if (r < 0)
                 return r;
 
+        flags = unit_file_bools_to_flags(runtime, force);
+
         if (isempty(mode))
                 mm = UNIT_FILE_PRESET_FULL;
         else {
@@ -1755,7 +1765,7 @@ static int method_preset_unit_files_with_mode(sd_bus *bus, sd_bus_message *messa
 
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
-        r = unit_file_preset(scope, runtime, NULL, l, mm, force, &changes, &n_changes);
+        r = unit_file_preset(scope, flags, NULL, l, mm, &changes, &n_changes);
         if (r < 0)
                 return r;
 
@@ -1767,7 +1777,7 @@ static int method_disable_unit_files_generic(
                 sd_bus_message *message,
                 Manager *m, const
                 char *verb,
-                int (*call)(UnitFileScope scope, bool runtime, const char *root_dir, char *files[], UnitFileChange **changes, unsigned *n_changes),
+                int (*call)(UnitFileScope scope, UnitFileFlags flags, const char *root_dir, char *files[], UnitFileChange **changes, unsigned *n_changes),
                 sd_bus_error *error) {
 
         _cleanup_strv_free_ char **l = NULL;
@@ -1800,7 +1810,7 @@ static int method_disable_unit_files_generic(
 
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
-        r = call(scope, runtime, NULL, l, &changes, &n_changes);
+        r = call(scope, runtime ? UNIT_FILE_RUNTIME : 0, NULL, l, &changes, &n_changes);
         if (r < 0)
                 return r;
 
@@ -1843,7 +1853,7 @@ static int method_set_default_target(sd_bus *bus, sd_bus_message *message, void 
 
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
-        r = unit_file_set_default(scope, NULL, name, force, &changes, &n_changes);
+        r = unit_file_set_default(scope, force ? UNIT_FILE_FORCE : 0, NULL, name, &changes, &n_changes);
         if (r < 0)
                 return r;
 
@@ -1857,6 +1867,7 @@ static int method_preset_all_unit_files(sd_bus *bus, sd_bus_message *message, vo
         UnitFilePresetMode mm;
         UnitFileScope scope;
         const char *mode;
+        UnitFileFlags flags;
         int force, runtime, r;
 
         assert(bus);
@@ -1877,6 +1888,8 @@ static int method_preset_all_unit_files(sd_bus *bus, sd_bus_message *message, vo
         if (r < 0)
                 return r;
 
+        flags = unit_file_bools_to_flags(runtime, force);
+
         if (isempty(mode))
                 mm = UNIT_FILE_PRESET_FULL;
         else {
@@ -1887,7 +1900,7 @@ static int method_preset_all_unit_files(sd_bus *bus, sd_bus_message *message, vo
 
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
-        r = unit_file_preset_all(scope, runtime, NULL, mm, force, &changes, &n_changes);
+        r = unit_file_preset_all(scope, flags, NULL, mm, &changes, &n_changes);
         if (r < 0) {
                 unit_file_changes_free(changes, n_changes);
                 return r;
@@ -1906,6 +1919,7 @@ static int method_add_dependency_unit_files(sd_bus *bus, sd_bus_message *message
         char *target;
         char *type;
         UnitDependency dep;
+        UnitFileFlags flags;
 
         assert(bus);
         assert(message);
@@ -1925,6 +1939,8 @@ static int method_add_dependency_unit_files(sd_bus *bus, sd_bus_message *message
         if (r < 0)
                 return r;
 
+        flags = unit_file_bools_to_flags(runtime, force);
+
         dep = unit_dependency_from_string(type);
         if (dep < 0)
                 return -EINVAL;
@@ -1935,7 +1951,7 @@ static int method_add_dependency_unit_files(sd_bus *bus, sd_bus_message *message
 
         scope = m->running_as == SYSTEMD_SYSTEM ? UNIT_FILE_SYSTEM : UNIT_FILE_USER;
 
-        r = unit_file_add_dependency(scope, runtime, NULL, l, target, dep, force, &changes, &n_changes);
+        r = unit_file_add_dependency(scope, flags, NULL, l, target, dep, &changes, &n_changes);
         if (r < 0)
                 return r;
 

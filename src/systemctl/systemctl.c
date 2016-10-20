@@ -165,6 +165,11 @@ static int daemon_reload(sd_bus *bus, char **args);
 static int halt_now(enum action a);
 static int check_one_unit(sd_bus *bus, const char *name, const char *good_states, bool quiet);
 
+static UnitFileFlags args_to_flags(void) {
+        return (arg_runtime ? UNIT_FILE_RUNTIME : 0) |
+               (arg_force   ? UNIT_FILE_FORCE   : 0);
+}
+
 static char** strv_skip_first(char **strv) {
         if (strv_length(strv) > 0)
                 return strv + 1;
@@ -1974,7 +1979,7 @@ static int set_default(sd_bus *bus, char **args) {
                 return log_oom();
 
         if (!bus || avoid_bus()) {
-                r = unit_file_set_default(arg_scope, arg_root, unit, true, &changes, &n_changes);
+                r = unit_file_set_default(arg_scope, UNIT_FILE_FORCE, arg_root, unit, &changes, &n_changes);
                 if (r < 0)
                         return log_error_errno(r, "Failed to set default target: %m");
 
@@ -5407,22 +5412,25 @@ static int enable_unit(sd_bus *bus, char **args) {
         }
 
         if (!bus || avoid_bus()) {
+                UnitFileFlags flags;
+
+                flags = args_to_flags();
                 if (streq(verb, "enable")) {
-                        r = unit_file_enable(arg_scope, arg_runtime, arg_root, names, arg_force, &changes, &n_changes);
+                        r = unit_file_enable(arg_scope, flags, arg_root, names, &changes, &n_changes);
                         carries_install_info = r;
                 } else if (streq(verb, "disable"))
-                        r = unit_file_disable(arg_scope, arg_runtime, arg_root, names, &changes, &n_changes);
+                        r = unit_file_disable(arg_scope, flags, arg_root, names, &changes, &n_changes);
                 else if (streq(verb, "reenable")) {
-                        r = unit_file_reenable(arg_scope, arg_runtime, arg_root, names, arg_force, &changes, &n_changes);
+                        r = unit_file_reenable(arg_scope, flags, arg_root, names, &changes, &n_changes);
                         carries_install_info = r;
                 } else if (streq(verb, "link"))
-                        r = unit_file_link(arg_scope, arg_runtime, arg_root, names, arg_force, &changes, &n_changes);
+                        r = unit_file_link(arg_scope, flags, arg_root, names, &changes, &n_changes);
                 else if (streq(verb, "preset")) {
-                        r = unit_file_preset(arg_scope, arg_runtime, arg_root, names, arg_preset_mode, arg_force, &changes, &n_changes);
+                        r = unit_file_preset(arg_scope, flags, arg_root, names, arg_preset_mode, &changes, &n_changes);
                 } else if (streq(verb, "mask"))
-                        r = unit_file_mask(arg_scope, arg_runtime, arg_root, names, arg_force, &changes, &n_changes);
+                        r = unit_file_mask(arg_scope, flags, arg_root, names, &changes, &n_changes);
                 else if (streq(verb, "unmask"))
-                        r = unit_file_unmask(arg_scope, arg_runtime, arg_root, names, &changes, &n_changes);
+                        r = unit_file_unmask(arg_scope, flags, arg_root, names, &changes, &n_changes);
                 else
                         assert_not_reached("Unknown verb");
 
@@ -5588,7 +5596,7 @@ static int add_dependency(sd_bus *bus, char **args) {
                 UnitFileChange *changes = NULL;
                 unsigned n_changes = 0;
 
-                r = unit_file_add_dependency(arg_scope, arg_runtime, arg_root, names, target, dep, arg_force, &changes, &n_changes);
+                r = unit_file_add_dependency(arg_scope, args_to_flags(), arg_root, names, target, dep, &changes, &n_changes);
 
                 if (r < 0)
                         return log_error_errno(r, "Can't add dependency: %m");
@@ -5652,7 +5660,7 @@ static int preset_all(sd_bus *bus, char **args) {
 
         if (!bus || avoid_bus()) {
 
-                r = unit_file_preset_all(arg_scope, arg_runtime, arg_root, arg_preset_mode, arg_force, &changes, &n_changes);
+                r = unit_file_preset_all(arg_scope, args_to_flags(), arg_root, arg_preset_mode, &changes, &n_changes);
                 if (r < 0) {
                         log_error_errno(r, "Operation failed: %m");
                         goto finish;
