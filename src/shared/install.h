@@ -68,7 +68,8 @@ typedef enum UnitFileChangeType {
 
 typedef enum UnitFileFlags {
         UNIT_FILE_RUNTIME = 1,
-        UNIT_FILE_FORCE = 1 << 1
+        UNIT_FILE_FORCE = 1 << 1,
+        UNIT_FILE_DRY_RUN = 1 << 2
 } UnitFileFlags;
 
 static inline bool unit_file_change_is_modification(UnitFileChangeType type) {
