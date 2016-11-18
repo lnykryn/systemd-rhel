@@ -1677,17 +1677,15 @@ static int manager_dispatch_notify_fd(sd_event_source *source, int fd, uint32_t 
 
                 n = recvmsg(m->notify_fd, &msghdr, MSG_DONTWAIT|MSG_CMSG_CLOEXEC);
                 if (n < 0) {
-                        if (errno == EAGAIN || errno == EINTR) {
+                        if (errno != EAGAIN && errno != EINTR)
                                 log_error("Failed to receive notification message: %m");
-                                break;
-                        }
 
                         /* It's not an option to return an error here since it
                         * would disable the notification handler entirely. Services
                         * wouldn't be able to send the WATCHDOG message for
                         * example... */
 
-                        continue;
+                        break;
                 }
 
                 for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
