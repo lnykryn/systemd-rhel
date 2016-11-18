@@ -554,6 +554,10 @@ static void test_config_parse_rlimit(void) {
         assert_se(rl[RLIMIT_NOFILE]->rlim_cur == 55);
         assert_se(rl[RLIMIT_NOFILE]->rlim_cur == rl[RLIMIT_NOFILE]->rlim_max);
 
+        assert_se(config_parse_bytes_limit(NULL, "fake", 1, "section", 1, "LimitSTACK", RLIMIT_STACK, "55", rl, NULL) >= 0);
+        assert_se(rl[RLIMIT_STACK]);
+        assert_se(rl[RLIMIT_STACK]->rlim_cur == 55);
+        assert_se(rl[RLIMIT_STACK]->rlim_cur == rl[RLIMIT_STACK]->rlim_max);
 
         assert_se(config_parse_limit(NULL, "fake", 1, "section", 1, "LimitNOFILE", RLIMIT_NOFILE, "55:66", rl, NULL) >= 0);
         assert_se(rl[RLIMIT_NOFILE]);

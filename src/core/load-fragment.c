@@ -1105,7 +1105,7 @@ static int rlim_parse_size(const char *val, rlim_t *res) {
                 off_t u;
 
                 r = parse_size(val, 1024, &u);
-                if (r >= 0 && u >= (off_t) RLIM_INFINITY)
+                if (r >= 0 && (uint64_t) u >= RLIM_INFINITY)
                         r = -ERANGE;
                 if (r == 0)
                         *res = (rlim_t) u;
