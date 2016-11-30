@@ -5739,7 +5739,7 @@ static int unit_is_enabled(sd_bus *bus, char **args) {
 
                         r = unit_file_get_state(arg_scope, arg_root, *name, &state);
                         if (r < 0)
-                                return log_error_errno(state, "Failed to get unit file state for %s: %m", *name);
+                                return log_error_errno(r, "Failed to get unit file state for %s: %m", *name);
 
                         if (state == UNIT_FILE_ENABLED ||
                             state == UNIT_FILE_ENABLED_RUNTIME ||
