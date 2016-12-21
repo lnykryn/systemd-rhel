@@ -163,6 +163,12 @@ global:
         sd_pid_notify_with_fds;
 } LIBSYSTEMD_217;
 
+LIBSYSTEMD_229 {
+global:
+        sd_journal_has_runtime_files;
+        sd_journal_has_persistent_files;
+} LIBSYSTEMD_219;
+
 m4_ifdef(`ENABLE_KDBUS',
 LIBSYSTEMD_FUTURE {
 global:
