@@ -1602,7 +1602,7 @@ int unit_file_unmask(
 
         _cleanup_set_free_free_ Set *remove_symlinks_to = NULL;
         _cleanup_free_ char *config_path = NULL;
-        _cleanup_free_ char **todo = NULL;
+        _cleanup_strv_free_ char **todo = NULL;
         size_t n_todo = 0, n_allocated = 0;
         char **i;
         int r, q;
@@ -1639,7 +1639,7 @@ int unit_file_unmask(
                 if (!GREEDY_REALLOC0(todo, n_allocated, n_todo + 2))
                         return -ENOMEM;
 
-                todo[n_todo++] = *i;
+                todo[n_todo++] = strdup(*i);
         }
 
         strv_uniq(todo);
