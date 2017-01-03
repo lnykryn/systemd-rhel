@@ -85,7 +85,7 @@ typedef enum StatusType {
 #include "unit-name.h"
 #include "exit-status.h"
 #include "show-status.h"
-#include "failure-action.h"
+#include "emergency-action.h"
 
 struct Manager {
         /* Note that the set of units we know of is allowed to be

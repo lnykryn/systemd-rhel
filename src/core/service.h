@@ -29,7 +29,7 @@ typedef struct ServiceFDStore ServiceFDStore;
 #include "ratelimit.h"
 #include "kill.h"
 #include "exit-status.h"
-#include "failure-action.h"
+#include "emergency-action.h"
 
 typedef enum ServiceState {
         SERVICE_DEAD,
@@ -197,8 +197,8 @@ struct Service {
         int status_errno;
 
         RateLimit start_limit;
-        FailureAction start_limit_action;
-        FailureAction failure_action;
+        EmergencyAction start_limit_action;
+        EmergencyAction emergency_action;
         char *reboot_arg;
 
         UnitRef accept_socket;

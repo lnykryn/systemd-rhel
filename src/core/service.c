@@ -1280,7 +1280,7 @@ static void service_enter_dead(Service *s, ServiceResult f, bool allow_restart) 
 
         if (s->result != SERVICE_SUCCESS) {
                 log_unit_warning(UNIT(s)->id, "%s failed.", UNIT(s)->id);
-                failure_action(UNIT(s)->manager, s->failure_action, s->reboot_arg);
+                emergency_action(UNIT(s)->manager, s->emergency_action, s->reboot_arg, "service failed");
         }
 
         if (allow_restart &&
@@ -1821,7 +1821,7 @@ static int service_start_limit_test(Service *s) {
 
         log_unit_warning(UNIT(s)->id, "start request repeated too quickly for %s", UNIT(s)->id);
 
-        return failure_action(UNIT(s)->manager, s->start_limit_action, s->reboot_arg);
+        return emergency_action(UNIT(s)->manager, s->start_limit_action, s->reboot_arg, "service failed");
 }
 
 static int service_start(Unit *u) {
