@@ -41,7 +41,7 @@ typedef struct UnitStatusMessageFormats UnitStatusMessageFormats;
 #include "condition.h"
 #include "install.h"
 #include "unit-name.h"
-#include "failure-action.h"
+#include "emergency-action.h"
 
 enum UnitActiveState {
         UNIT_ACTIVE,
@@ -121,7 +121,7 @@ struct Unit {
 
         /* Job timeout and action to take */
         usec_t job_timeout;
-        FailureAction job_timeout_action;
+        EmergencyAction job_timeout_action;
         char *job_timeout_reboot_arg;
 
         /* References to this */
