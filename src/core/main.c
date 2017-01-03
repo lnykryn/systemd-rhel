@@ -669,7 +669,7 @@ static int parse_config_file(void) {
                 { "Manager", "DefaultLimitLOCKS",         config_parse_limit,            0, &arg_default_rlimit[RLIMIT_LOCKS]      },
                 { "Manager", "DefaultLimitSIGPENDING",    config_parse_limit,            0, &arg_default_rlimit[RLIMIT_SIGPENDING] },
                 { "Manager", "DefaultLimitMSGQUEUE",      config_parse_bytes_limit,      0, &arg_default_rlimit[RLIMIT_MSGQUEUE]   },
-                { "Manager", "DefaultLimitNICE",          config_parse_limit,            0, &arg_default_rlimit[RLIMIT_NICE]       },
+                { "Manager", "DefaultLimitNICE",          config_parse_nice_limit,       0, &arg_default_rlimit[RLIMIT_NICE]       },
                 { "Manager", "DefaultLimitRTPRIO",        config_parse_limit,            0, &arg_default_rlimit[RLIMIT_RTPRIO]     },
                 { "Manager", "DefaultLimitRTTIME",        config_parse_limit,            0, &arg_default_rlimit[RLIMIT_RTTIME]     },
                 { "Manager", "DefaultCPUAccounting",      config_parse_bool,             0, &arg_default_cpu_accounting            },

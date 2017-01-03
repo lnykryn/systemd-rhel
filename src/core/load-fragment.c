@@ -1154,6 +1154,56 @@ static int rlim_parse_usec(const char *val, rlim_t *res) {
         return r;
 }
 
+static int rlim_parse_nice(const char *val, rlim_t *ret) {
+        uint64_t rl;
+        int r;
+
+        /* So, Linux is weird. The range for RLIMIT_NICE is 40..1, mapping to the nice levels -20..19. However, the
+         * RLIMIT_NICE limit defaults to 0 by the kernel, i.e. a value that maps to nice level 20, which of course is
+         * bogus and does not exist. In order to permit parsing the RLIMIT_NICE of 0 here we hence implement a slight
+         * asymmetry: when parsing as positive nice level we permit 0..19. When parsing as negative nice level, we
+         * permit -20..0. But when parsing as raw resource limit value then we also allow the special value 0.
+         *
+         * Yeah, Linux is quality engineering sometimes... */
+
+        if (val[0] == '+') {
+
+                /* Prefixed with "+": Parse as positive user-friendly nice value */
+                r = safe_atou64(val + 1, &rl);
+                if (r < 0)
+                        return r;
+
+                if (rl >= PRIO_MAX)
+                        return -ERANGE;
+
+                rl = 20 - rl;
+
+        } else if (val[0] == '-') {
+
+                /* Prefixed with "-": Parse as negative user-friendly nice value */
+                r = safe_atou64(val + 1, &rl);
+                if (r < 0)
+                        return r;
+
+                if (rl > (uint64_t) (-PRIO_MIN))
+                        return -ERANGE;
+
+                rl = 20 + rl;
+        } else {
+
+                /* Not prefixed: parse as raw resource limit value */
+                r = safe_atou64(val, &rl);
+                if (r < 0)
+                        return r;
+
+                if (rl > (uint64_t) (20 - PRIO_MIN))
+                        return -ERANGE;
+        }
+
+        *ret = (rlim_t) rl;
+        return 0;
+}
+
 static int parse_rlimit_range(
                 const char *unit,
                 const char *filename,
@@ -1286,6 +1336,28 @@ int config_parse_usec_limit(
         return parse_rlimit_range(unit, filename, line, rvalue, rl, rlim_parse_usec);
 }
 
+int config_parse_nice_limit(
+                const char *unit,
+                const char *filename,
+                unsigned line,
+                const char *section,
+                unsigned section_line,
+                const char *lvalue,
+                int ltype,
+                const char *rvalue,
+                void *data,
+                void *userdata) {
+
+        struct rlimit **rl = data;
+
+        assert(filename);
+        assert(lvalue);
+        assert(rvalue);
+        assert(data);
+
+        rl += ltype;
+        return parse_rlimit_range(unit, filename, line, rvalue, rl, rlim_parse_nice);
+}
 
 #ifdef HAVE_SYSV_COMPAT
 int config_parse_sysv_priority(const char *unit,
