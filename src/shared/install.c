@@ -1682,7 +1682,7 @@ int unit_file_link(
 
         _cleanup_lookup_paths_free_ LookupPaths paths = {};
         _cleanup_free_ char *config_path = NULL;
-        _cleanup_free_ char **todo = NULL;
+        _cleanup_strv_free_ char **todo = NULL;
         size_t n_todo = 0, n_allocated = 0;
         char **i;
         int r,q;
@@ -1736,7 +1736,11 @@ int unit_file_link(
                 if (!GREEDY_REALLOC0(todo, n_allocated, n_todo + 2))
                         return -ENOMEM;
 
-                todo[n_todo++] = *i;
+                todo[n_todo] = strdup(*i);
+                if (!todo[n_todo])
+                        return -ENOMEM;
+
+                n_todo++;
         }
 
         strv_uniq(todo);
