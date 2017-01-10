@@ -250,6 +250,9 @@ static int builtin_input_id(struct udev_device *dev, int argc, char *argv[], boo
                 get_cap_mask(dev, pdev, "capabilities/key", bitmask_key, sizeof(bitmask_key), test);
                 test_pointers(dev, bitmask_ev, bitmask_abs, bitmask_key, bitmask_rel, test);
                 test_key(dev, bitmask_ev, bitmask_key, test);
+
+                if (test_bit(EV_SW, bitmask_ev))
+                        udev_builtin_add_property(dev, test, "ID_INPUT_SWITCH", "1");
         }
 
         devnode = udev_device_get_devnode(dev);
