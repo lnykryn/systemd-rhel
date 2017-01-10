@@ -26,7 +26,7 @@
 #include "cap-list.h"
 #include "missing.h"
 
-static const struct capability_name* lookup_capability(register const char *str, register unsigned int len);
+static const struct capability_name* lookup_capability(register const char *str, register GPERF_LEN_TYPE len);
 
 #include "cap-to-name.h"
 #include "cap-from-name.h"

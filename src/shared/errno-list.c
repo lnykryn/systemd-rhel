@@ -26,7 +26,7 @@
 #include "errno-list.h"
 
 static const struct errno_name* lookup_errno(register const char *str,
-                                                 register unsigned int len);
+                                             register GPERF_LEN_TYPE len);
 
 #include "errno-to-name.h"
 #include "errno-from-name.h"
