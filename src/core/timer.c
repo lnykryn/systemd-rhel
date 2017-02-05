@@ -335,7 +335,7 @@ static void add_random(Timer *t, usec_t *v) {
         else
                 *v += add;
 
-        log_unit_info(UNIT(t)->id, "Adding %s random time.", format_timespan(s, sizeof(s), add, 0));
+        log_unit_debug(UNIT(t)->id, "Adding %s random time.", format_timespan(s, sizeof(s), add, 0));
 }
 
 static void timer_enter_waiting(Timer *t, bool initial) {
