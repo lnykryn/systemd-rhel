@@ -5549,16 +5549,20 @@ static int enable_unit(sd_bus *bus, char **args) {
                             "3) A unit may be started when needed via activation (socket, path, timer,\n"
                             "   D-Bus, udev, scripted systemctl call, ...).\n");
 
-        if (arg_now && n_changes > 0 && STR_IN_SET(args[0], "enable", "disable", "mask")) {
-                char *new_args[n_changes + 2];
-                unsigned i;
+        if (arg_now && STR_IN_SET(args[0], "enable", "disable", "mask")) {
+                unsigned len, i;
 
-                new_args[0] = streq(args[0], "enable") ? (char *)"start" : (char *)"stop";
-                for (i = 0; i < n_changes; i++)
-                        new_args[i + 1] = basename(changes[i].path);
-                new_args[i + 1] = NULL;
+                len = strv_length(names);
+                {
+                        char *new_args[len + 2];
 
-                r = start_unit(bus, new_args);
+                        new_args[0] = (char*) (streq(args[0], "enable") ? "start" : "stop");
+                        for (i = 0; i < len; i++)
+                                new_args[i + 1] = basename(names[i]);
+                        new_args[i + 1] = NULL;
+
+                        r = start_unit(bus, new_args);
+                }
         }
 
 finish:
