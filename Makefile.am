@@ -5711,7 +5711,8 @@ EXTRA_DIST += \
 	src/network/networkd-network-gperf.gperf \
 	src/network/networkd-netdev-gperf.gperf \
 	units/systemd-networkd.service.in \
-	units/systemd-networkd-wait-online.service.in
+	units/systemd-networkd-wait-online.service.in \
+	test/test-exec-deserialization.py
 
 CLEANFILES += \
 	src/network/networkd-network-gperf.c \
