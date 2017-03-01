@@ -106,18 +106,18 @@ static void unmount_autofs(Automount *a) {
         if (a->pipe_fd < 0)
                 return;
 
-        automount_send_ready(a, a->tokens, -EHOSTDOWN);
-        automount_send_ready(a, a->expire_tokens, -EHOSTDOWN);
-
         a->pipe_event_source = sd_event_source_unref(a->pipe_event_source);
         a->pipe_fd = safe_close(a->pipe_fd);
 
-        /* If we reload/reexecute things we keep the mount point
-         * around */
-        if (a->where &&
-            (UNIT(a)->manager->exit_code != MANAGER_RELOAD &&
-             UNIT(a)->manager->exit_code != MANAGER_REEXECUTE))
-                repeat_unmount(a->where);
+        /* If we reload/reexecute things we keep the mount point around */
+        if (!IN_SET(UNIT(a)->manager->exit_code, MANAGER_RELOAD, MANAGER_REEXECUTE)) {
+
+                automount_send_ready(a, a->tokens, -EHOSTDOWN);
+                automount_send_ready(a, a->expire_tokens, -EHOSTDOWN);
+
+                if (a->where)
+                        repeat_unmount(a->where);
+        }
 }
 
 static void automount_done(Unit *u) {
@@ -193,6 +193,20 @@ static int automount_verify(Automount *a) {
         return 0;
 }
 
+static int automount_set_where(Automount *a) {
+        assert(a);
+
+        if (a->where)
+                return 0;
+
+        a->where = unit_name_to_path(UNIT(a)->id);
+        if (!a->where)
+                return -ENOMEM;
+
+        path_kill_slashes(a->where);
+        return 1;
+}
+
 static int automount_load(Unit *u) {
         Automount *a = AUTOMOUNT(u);
         int r;
@@ -208,13 +222,9 @@ static int automount_load(Unit *u) {
         if (u->load_state == UNIT_LOADED) {
                 Unit *x;
 
-                if (!a->where) {
-                        a->where = unit_name_to_path(u->id);
-                        if (!a->where)
-                                return -ENOMEM;
-                }
-
-                path_kill_slashes(a->where);
+                r = automount_set_where(a);
+                if (r < 0)
+                        return r;
 
                 r = unit_load_related_unit(u, ".mount", &x);
                 if (r < 0)
@@ -259,6 +269,8 @@ static void automount_set_state(Automount *a, AutomountState state) {
         unit_notify(UNIT(a), state_translation_table[old_state], state_translation_table[state], true);
 }
 
+static int automount_start_expire(Automount *a);
+
 static int automount_coldplug(Unit *u, Hashmap *deferred_work) {
         Automount *a = AUTOMOUNT(u);
         int r;
@@ -266,20 +278,30 @@ static int automount_coldplug(Unit *u, Hashmap *deferred_work) {
         assert(a);
         assert(a->state == AUTOMOUNT_DEAD);
 
-        if (a->deserialized_state != a->state) {
+        if (a->deserialized_state == a->state)
+                return 0;
+
+        if (IN_SET(a->deserialized_state, AUTOMOUNT_WAITING, AUTOMOUNT_RUNNING)) {
+
+                r = automount_set_where(a);
+                if (r < 0)
+                        return r;
 
                 r = open_dev_autofs(u->manager);
                 if (r < 0)
                         return r;
 
-                if (a->deserialized_state == AUTOMOUNT_WAITING ||
-                    a->deserialized_state == AUTOMOUNT_RUNNING) {
+                assert(a->pipe_fd >= 0);
 
-                        assert(a->pipe_fd >= 0);
+                r = sd_event_add_io(u->manager->event, &a->pipe_event_source, a->pipe_fd, EPOLLIN, automount_dispatch_io, u);
+                if (r < 0)
+                        return r;
 
-                        r = sd_event_add_io(u->manager->event, &a->pipe_event_source, a->pipe_fd, EPOLLIN, automount_dispatch_io, u);
+                (void) sd_event_source_set_description(a->pipe_event_source, "automount-io");
+                if (a->deserialized_state == AUTOMOUNT_RUNNING) {
+                        r = automount_start_expire(a);
                         if (r < 0)
-                                return r;
+                                log_unit_warning_errno(UNIT(a)->id, r, "Failed to start expiration timer, ignoring: %m");
                 }
 
                 automount_set_state(a, a->deserialized_state);
@@ -636,8 +658,6 @@ static void *expire_thread(void *p) {
         return NULL;
 }
 
-static int automount_start_expire(Automount *a);
-
 static int automount_dispatch_expire(sd_event_source *source, usec_t usec, void *userdata) {
         Automount *a = AUTOMOUNT(userdata);
         _cleanup_(expire_data_freep) struct expire_data *data = NULL;
@@ -698,6 +718,12 @@ static void automount_enter_running(Automount *a) {
         int r;
 
         assert(a);
+
+        /* If the user masked our unit in the meantime, fail */
+        if (UNIT(a)->load_state != UNIT_LOADED) {
+                log_unit_error(UNIT(a)->id, "Suppressing automount event since unit is no longer loaded.");
+                goto fail;
+        }
 
         /* We don't take mount requests anymore if we are supposed to
          * shut down anyway */
