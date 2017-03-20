@@ -17,7 +17,11 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
+#include <grp.h>
+#include <pwd.h>
 #include <stdio.h>
+#include <sys/prctl.h>
+#include <sys/types.h>
 
 #include "unit.h"
 #include "manager.h"
@@ -25,6 +29,7 @@
 #include "macro.h"
 #include "strv.h"
 #include "mkdir.h"
+#include "path-util.h"
 
 typedef void (*test_function_t)(Manager *m);
 
@@ -177,6 +182,42 @@ static void test_exec_runtimedirectory(Manager *m) {
         test(m, "exec-runtimedirectory-owner.service", 0, CLD_EXITED);
 }
 
+static void test_exec_capabilityboundingset(Manager *m) {
+        int r;
+
+        r = find_binary("capsh", true, NULL);
+        if (r < 0) {
+                log_error_errno(r, "Skipping %s, could not find capsh binary: %m", __func__);
+                return;
+        }
+
+        test(m, "exec-capabilityboundingset-simple.service", 0, CLD_EXITED);
+        test(m, "exec-capabilityboundingset-reset.service", 0, CLD_EXITED);
+        test(m, "exec-capabilityboundingset-merge.service", 0, CLD_EXITED);
+        test(m, "exec-capabilityboundingset-invert.service", 0, CLD_EXITED);
+}
+
+static void test_exec_capabilityambientset(Manager *m) {
+        int r;
+
+        /* Check if the kernel has support for ambient capabilities. Run
+         * the tests only if that's the case. Clearing all ambient
+         * capabilities is fine, since we are expecting them to be unset
+         * in the first place for the tests. */
+        r = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0);
+        if (r >= 0 || errno != EINVAL) {
+                if (getpwnam("nobody")) {
+                        test(m, "exec-capabilityambientset.service", 0, CLD_EXITED);
+                        test(m, "exec-capabilityambientset-merge.service", 0, CLD_EXITED);
+                } else if (getpwnam("nfsnobody")) {
+                        test(m, "exec-capabilityambientset-nfsnobody.service", 0, CLD_EXITED);
+                        test(m, "exec-capabilityambientset-merge-nfsnobody.service", 0, CLD_EXITED);
+                } else
+                        log_error_errno(errno, "Skipping %s, could not find nobody/nfsnobody user: %m", __func__);
+        } else
+                log_error_errno(errno, "Skipping %s, the kernel does not support ambient capabilities: %m", __func__);
+}
+
 int main(int argc, char *argv[]) {
         test_function_t tests[] = {
                 test_exec_workingdirectory,
@@ -192,6 +233,8 @@ int main(int argc, char *argv[]) {
                 test_exec_passenvironment,
                 test_exec_umask,
                 test_exec_runtimedirectory,
+                test_exec_capabilityboundingset,
+                test_exec_capabilityambientset,
                 NULL,
         };
         test_function_t *test = NULL;
