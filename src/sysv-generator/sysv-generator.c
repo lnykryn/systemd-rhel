@@ -500,6 +500,9 @@ static int load_sysv(SysvStub *s) {
                                                         r = strv_extend(&s->before, SPECIAL_NETWORK_TARGET);
                                                         if (r < 0)
                                                                 return log_oom();
+                                                        r = strv_extend(&s->wants, SPECIAL_NETWORK_TARGET);
+                                                        if (r < 0)
+                                                                return log_oom();
                                                 }
                                         }
 
