@@ -29,14 +29,10 @@ ACTION=="remove", GOTO="zfcp_scsi_device_end"
 KERNEL=="sd*", SUBSYSTEMS=="ccw", DRIVERS=="zfcp", ENV{.ID_ZFCP_BUS}="1"
 
 # For SCSI disks
-KERNEL=="sd*[!0-9]", SUBSYSTEMS=="scsi",
-        ENV{.ID_ZFCP_BUS}=="1", ENV{DEVTYPE}=="disk",
-        SYMLINK+="disk/by-path/ccw-$attr{hba_id}-zfcp-$attr{wwpn}:$attr{fcp_lun}"
+KERNEL=="sd*[!0-9]", SUBSYSTEMS=="scsi", ENV{.ID_ZFCP_BUS}=="1", ENV{DEVTYPE}=="disk", SYMLINK+="disk/by-path/ccw-$attr{hba_id}-zfcp-$attr{wwpn}:$attr{fcp_lun}"
 
 
 # For partitions on a SCSI disk
-KERNEL=="sd*[0-9]", SUBSYSTEMS=="scsi",
-        ENV{.ID_ZFCP_BUS}=="1", ENV{DEVTYPE}=="partition",
-        SYMLINK+="disk/by-path/ccw-$attr{hba_id}-zfcp-$attr{wwpn}:$attr{fcp_lun}-part%n"
+KERNEL=="sd*[0-9]", SUBSYSTEMS=="scsi", ENV{.ID_ZFCP_BUS}=="1", ENV{DEVTYPE}=="partition", SYMLINK+="disk/by-path/ccw-$attr{hba_id}-zfcp-$attr{wwpn}:$attr{fcp_lun}-part%n"
 
 LABEL="zfcp_scsi_device_end"
