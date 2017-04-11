@@ -162,6 +162,13 @@
         </varlistentry>
 
         <varlistentry>
+          <term><varname>e</varname></term>
+          <listitem><para>Clean directory contents based on the age argument.
+          Lines of this type accept shell-style globs in
+          place of normal path names.</para></listitem>
+        </varlistentry>
+
+        <varlistentry>
           <term><varname>v</varname></term>
           <listitem><para>Create a subvolume if the path does not
           exist yet and the file system supports this
@@ -467,7 +474,7 @@
 
       <para>The age field only applies to lines
       starting with <varname>d</varname>,
-      <varname>D</varname>, and
+      <varname>D</varname>, <varname>e</varname> and
       <varname>x</varname>. If omitted or set to
       <literal>-</literal>, no automatic clean-up is
       done.</para>
