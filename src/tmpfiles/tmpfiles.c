@@ -79,6 +79,7 @@ typedef enum ItemType {
 
         /* These ones take globs */
         WRITE_FILE = 'w',
+        EMPTY_DIRECTORY = 'e',
         SET_XATTR = 't',
         RECURSIVE_SET_XATTR = 'T',
         SET_ACL = 'a',
@@ -150,6 +151,7 @@ static bool needs_glob(ItemType t) {
                       IGNORE_PATH,
                       IGNORE_DIRECTORY_PATH,
                       REMOVE_PATH,
+                      EMPTY_DIRECTORY,
                       RECURSIVE_REMOVE_PATH,
                       ADJUST_MODE,
                       RELABEL_PATH,
@@ -165,6 +167,7 @@ static bool takes_ownership(ItemType t) {
                       CREATE_FILE,
                       TRUNCATE_FILE,
                       CREATE_DIRECTORY,
+                      EMPTY_DIRECTORY,
                       TRUNCATE_DIRECTORY,
                       CREATE_SUBVOLUME,
                       CREATE_FIFO,
@@ -1059,6 +1062,9 @@ static int create_item(Item *i) {
 
                 log_debug("%s directory \"%s\".", creation_mode_verb_to_string(creation), i->path);
 
+                /* fall through */
+
+        case EMPTY_DIRECTORY:
                 r = path_set_perms(i, i->path);
                 if (r < 0)
                         return r;
@@ -1285,43 +1291,19 @@ static int remove_item_instance(Item *i, const char *instance) {
 }
 
 static int remove_item(Item *i) {
-        int r = 0;
-
         assert(i);
 
         log_debug("Running remove action for entry %c %s", (char) i->type, i->path);
 
         switch (i->type) {
-
-        case CREATE_FILE:
-        case TRUNCATE_FILE:
-        case CREATE_DIRECTORY:
-        case CREATE_SUBVOLUME:
-        case CREATE_FIFO:
-        case CREATE_SYMLINK:
-        case CREATE_CHAR_DEVICE:
-        case CREATE_BLOCK_DEVICE:
-        case IGNORE_PATH:
-        case IGNORE_DIRECTORY_PATH:
-        case ADJUST_MODE:
-        case RELABEL_PATH:
-        case RECURSIVE_RELABEL_PATH:
-        case WRITE_FILE:
-        case COPY_FILES:
-        case SET_XATTR:
-        case RECURSIVE_SET_XATTR:
-        case SET_ACL:
-        case RECURSIVE_SET_ACL:
-                break;
-
         case REMOVE_PATH:
         case TRUNCATE_DIRECTORY:
         case RECURSIVE_REMOVE_PATH:
-                r = glob_item(i, remove_item_instance, false);
-                break;
-        }
+                return glob_item(i, remove_item_instance, false);
 
-        return r;
+        default:
+                return 0;
+        }
 }
 
 static int clean_item_instance(Item *i, const char* instance) {
@@ -1377,8 +1359,6 @@ static int clean_item_instance(Item *i, const char* instance) {
 }
 
 static int clean_item(Item *i) {
-        int r = 0;
-
         assert(i);
 
         log_debug("Running clean action for entry %c %s", (char) i->type, i->path);
@@ -1386,19 +1366,17 @@ static int clean_item(Item *i) {
         switch (i->type) {
         case CREATE_DIRECTORY:
         case CREATE_SUBVOLUME:
+        case EMPTY_DIRECTORY:
         case TRUNCATE_DIRECTORY:
         case IGNORE_PATH:
         case COPY_FILES:
                 clean_item_instance(i, i->path);
-                break;
+                return 0;
         case IGNORE_DIRECTORY_PATH:
-                r = glob_item(i, clean_item_instance, false);
-                break;
+                return glob_item(i, clean_item_instance, false);
         default:
-                break;
+                return 0;
         }
-
-        return r;
 }
 
 static int process_item_array(ItemArray *array);
@@ -1642,6 +1620,7 @@ static int parse_line(const char *fname, unsigned line, const char *buffer) {
         case TRUNCATE_FILE:
         case CREATE_DIRECTORY:
         case CREATE_SUBVOLUME:
+        case EMPTY_DIRECTORY:
         case TRUNCATE_DIRECTORY:
         case CREATE_FIFO:
         case IGNORE_PATH:
