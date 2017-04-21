@@ -270,6 +270,11 @@ int main(int argc, char *argv[]) {
         }
         assert_se(r >= 0);
         assert_se(manager_startup(m, NULL, NULL) >= 0);
+        m->default_cpu_accounting =
+                m->default_memory_accounting =
+                m->default_blockio_accounting =
+                m->default_tasks_accounting = false;
+        m->default_tasks_max = (uint64_t) -1;
 
         for (test = tests; test && *test; test++)
                 (*test)(m);
