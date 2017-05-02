@@ -351,6 +351,8 @@ enum nss_status _nss_myhostname_gethostbyname3_r(
                 *h_errnop = NO_DATA;
                 return NSS_STATUS_UNAVAIL;
         }
+        if (af == AF_INET6 && !socket_ipv6_is_supported())
+                return NSS_STATUS_UNAVAIL;
 
         if (is_localhost(name)) {
                 canonical = "localhost";
@@ -381,13 +383,9 @@ enum nss_status _nss_myhostname_gethostbyname3_r(
                         return NSS_STATUS_NOTFOUND;
                 }
 
-                if (af == AF_INET6 && !socket_ipv6_is_supported()) {
+                n_addresses = local_addresses(NULL, 0, af, &addresses);
+                if (n_addresses < 0)
                         n_addresses = 0;
-                } else {
-                        n_addresses = local_addresses(NULL, 0, af, &addresses);
-                        if (n_addresses < 0)
-                                n_addresses = 0;
-                }
 
                 canonical = hn;
                 additional = n_addresses <= 0 && af == AF_INET6 ? "localhost" : NULL;
