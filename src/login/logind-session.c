@@ -183,7 +183,7 @@ int session_save(Session *s) {
                 "STATE=%s\n"
                 "REMOTE=%i\n"
                 "STOPPING=%i\n",
-                (unsigned long) s->user->uid,
+                s->user->uid,
                 s->user->name,
                 session_is_active(s),
                 session_state_to_string(session_get_state(s)),

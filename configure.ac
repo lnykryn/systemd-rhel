@@ -187,7 +187,8 @@ CC_CHECK_FLAGS_APPEND([with_cflags], [CFLAGS], [\
         -Wno-unused-parameter \
         -Wno-missing-field-initializers \
         -Wno-unused-result \
-        -Werror=overflow \
+        -Werror \
+        -Wno-error=maybe-uninitialized \
         -Wdate-time \
         -Wnested-externs \
         -ffast-math \
@@ -207,15 +208,6 @@ AS_CASE([$CC], [*clang*],
                -Wno-typedef-redefinition \
                -Wno-gnu-variable-sized-type-not-at-end \
         ])])
-
-AC_ARG_ENABLE([lto], AS_HELP_STRING([--disable-lto], [Disable Link time optimization]))
-AS_IF([test "x$enable_lto" != "xno"], [
-AS_CASE([$CFLAGS], [*-O[[12345\ ]]*], [
-         CC_CHECK_FLAGS_APPEND([with_cflags], [CFLAGS], [-flto -ffat-lto-objects])
-         CC_CHECK_FLAGS_APPEND([with_ldflags], [LDFLAGS],[-Wl,-fuse-ld=gold])
-         ],
-[AC_MSG_RESULT([skipping -flto, optimization not enabled])])
-])
 
 AC_SUBST([OUR_CFLAGS], "$with_cflags $sanitizer_cflags")
 

@@ -1205,7 +1205,6 @@ static int status_welcome(void) {
 
 static int write_container_id(void) {
         const char *c;
-        int r;
 
         c = getenv("container");
         if (isempty(c))
