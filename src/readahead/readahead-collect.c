@@ -106,6 +106,9 @@ static int pack_file(FILE *pack, const char *fn, bool on_btrfs) {
                 if (errno == EPERM || errno == EACCES)
                         return 0;
 
+                if (errno == ELOOP)
+                        return 0;
+
                 log_warning("open(%s) failed: %m", fn);
                 r = -errno;
                 goto finish;
