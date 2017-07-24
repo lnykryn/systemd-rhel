@@ -150,7 +150,7 @@ create_empty_image() {
 ,
 EOF
 
-    mkfs.ext3 -L systemd "${LOOPDEV}p1"
+    mkfs.xfs -L systemd "${LOOPDEV}p1"
 }
 
 check_result_nspawn() {

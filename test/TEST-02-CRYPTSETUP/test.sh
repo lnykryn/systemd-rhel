@@ -38,7 +38,7 @@ test_setup() {
     echo -n test >$TESTDIR/keyfile
     cryptsetup -q luksFormat ${LOOPDEV}p2 $TESTDIR/keyfile
     cryptsetup luksOpen ${LOOPDEV}p2 varcrypt <$TESTDIR/keyfile
-    mkfs.ext3 -L var /dev/mapper/varcrypt
+    mkfs.xfs -L var /dev/mapper/varcrypt
     mkdir -p $TESTDIR/root
     mount ${LOOPDEV}p1 $TESTDIR/root
     mkdir -p $TESTDIR/root/var
@@ -74,7 +74,7 @@ EOF
         cat $initdir/etc/crypttab | ddebug
 
         cat >>$initdir/etc/fstab <<EOF
-/dev/mapper/varcrypt    /var    ext3    defaults 0 1
+/dev/mapper/varcrypt    /var    xfs    defaults 0 1
 EOF
     )
     setup_nspawn_root
