@@ -53,7 +53,8 @@ char** path_strv_make_absolute_cwd(char **l);
 char** path_strv_resolve(char **l, const char *prefix);
 char** path_strv_resolve_uniq(char **l, const char *prefix);
 
-int path_is_mount_point(const char *path, bool allow_symlink);
+int fd_is_mount_point(int fd, const char *filename, int flags);
+int path_is_mount_point(const char *path, int flags);
 int path_is_read_only_fs(const char *path);
 int path_is_os_tree(const char *path);
 

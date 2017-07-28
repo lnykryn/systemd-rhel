@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
                 return EXIT_SUCCESS;
         }
 
-        if (path_is_mount_point("/boot", true) <= 0 &&
+        if (path_is_mount_point("/boot", AT_SYMLINK_FOLLOW) <= 0 &&
             dir_is_empty("/boot") <= 0) {
                 log_debug("/boot already populated, exiting.");
                 return EXIT_SUCCESS;
