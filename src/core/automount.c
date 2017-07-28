@@ -749,7 +749,7 @@ static int automount_start(Unit *u) {
         assert(a);
         assert(a->state == AUTOMOUNT_DEAD || a->state == AUTOMOUNT_FAILED);
 
-        if (path_is_mount_point(a->where, false)) {
+        if (path_is_mount_point(a->where, 0)) {
                 log_unit_error(u->id,
                                "Path %s is already a mount point, refusing start for %s",
                                a->where, u->id);
