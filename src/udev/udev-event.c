@@ -610,7 +610,11 @@ static int spawn_wait(struct udev_event *event,
                                 event->sigterm = true;
                                 break;
                         case SIGCHLD:
-                                if (waitpid(pid, &status, WNOHANG) < 0)
+                                if (pid != (pid_t) fdsi.ssi_pid) {
+                                        log_debug("expected SIGCHLD from '%s' ["PID_FMT"] received from unknown process ["PID_FMT"]. Ignoring", cmd, pid, fdsi.ssi_pid);
+                                        continue;
+                                }
+                                if (waitpid(pid, &status, WNOHANG) <= 0)
                                         break;
                                 if (WIFEXITED(status)) {
                                         log_debug("'%s' ["PID_FMT"] exit with return code %i", cmd, pid, WEXITSTATUS(status));
