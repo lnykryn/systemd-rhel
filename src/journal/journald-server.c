@@ -917,6 +917,9 @@ finish:
         dispatch_message_real(s, iovec, n, m, ucred, tv, label, label_len, unit_id, priority, object_pid);
 }
 
+static bool flushed_flag_is_set(void) {
+        return (access("/run/systemd/journal/flushed", F_OK) >= 0);
+}
 
 static int system_journal_open(Server *s, bool flush_requested) {
         int r;
@@ -933,8 +936,7 @@ static int system_journal_open(Server *s, bool flush_requested) {
 
         if (!s->system_journal &&
             (s->storage == STORAGE_PERSISTENT || s->storage == STORAGE_AUTO) &&
-            (flush_requested
-             || (flushed = (access("/run/systemd/journal/flushed", F_OK) >= 0)))) {
+            (flush_requested || (flushed = flushed_flag_is_set()))) {
 
                 /* If in auto mode: first try to create the machine
                  * path, but not the prefix.
