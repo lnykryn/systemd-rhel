@@ -99,6 +99,7 @@
 #include "in-addr-util.h"
 #include "fw-util.h"
 #include "local-addresses.h"
+#include "nspawn-stub-pid1.h"
 
 #ifdef HAVE_SECCOMP
 #include "seccomp-util.h"
@@ -129,6 +130,14 @@ typedef enum Volatile {
         VOLATILE_STATE,
 } Volatile;
 
+typedef enum StartMode {
+        START_PID1, /* Run parameters as command line as process 1 */
+        START_PID2, /* Use stub init process as PID 1, run parameters as command line as process 2 */
+        START_BOOT, /* Search for init system, pass arguments as parameters */
+        _START_MODE_MAX,
+        _START_MODE_INVALID = -1
+} StartMode;
+
 static char *arg_directory = NULL;
 static char *arg_template = NULL;
 static char *arg_user = NULL;
@@ -139,7 +148,7 @@ static const char *arg_selinux_apifs_context = NULL;
 static const char *arg_slice = NULL;
 static bool arg_private_network = false;
 static bool arg_read_only = false;
-static bool arg_boot = false;
+static StartMode arg_start_mode = START_PID1;
 static bool arg_ephemeral = false;
 static LinkJournal arg_link_journal = LINK_AUTO;
 static bool arg_link_journal_try = false;
@@ -200,6 +209,7 @@ static void help(void) {
                "  -x --ephemeral            Run container with snapshot of root directory, and\n"
                "                            remove it after exit\n"
                "  -i --image=PATH           File system device or disk image for the container\n"
+               "  -a --as-pid2              Maintain a stub init as PID1, invoke binary as PID2\n"
                "  -b --boot                 Boot up full system (i.e. invoke init)\n"
                "  -u --user=USER            Run the command under specified user or uid\n"
                "  -M --machine=NAME         Set the machine name for the container\n"
@@ -304,6 +314,7 @@ static int parse_argv(int argc, char *argv[]) {
                 { "ephemeral",             no_argument,       NULL, 'x'                   },
                 { "user",                  required_argument, NULL, 'u'                   },
                 { "private-network",       no_argument,       NULL, ARG_PRIVATE_NETWORK   },
+                { "as-pid2",               no_argument,       NULL, 'a'                   },
                 { "boot",                  no_argument,       NULL, 'b'                   },
                 { "uuid",                  required_argument, NULL, ARG_UUID              },
                 { "read-only",             no_argument,       NULL, ARG_READ_ONLY         },
@@ -340,7 +351,7 @@ static int parse_argv(int argc, char *argv[]) {
         assert(argc >= 0);
         assert(argv);
 
-        while ((c = getopt_long(argc, argv, "+hD:u:bL:M:jS:Z:qi:xp:n", options, NULL)) >= 0)
+        while ((c = getopt_long(argc, argv, "+hD:u:abL:M:jS:Z:qi:xp:n", options, NULL)) >= 0)
 
                 switch (c) {
 
@@ -421,7 +432,21 @@ static int parse_argv(int argc, char *argv[]) {
                         break;
 
                 case 'b':
-                        arg_boot = true;
+                        if (arg_start_mode == START_PID2) {
+                                log_error("--boot and --as-pid2 may not be combined.");
+                                return -EINVAL;
+                        }
+
+                        arg_start_mode = START_BOOT;
+                        break;
+
+                case 'a':
+                        if (arg_start_mode == START_BOOT) {
+                                log_error("--boot and --as-pid2 may not be combined.");
+                                return -EINVAL;
+                        }
+
+                        arg_start_mode = START_PID2;
                         break;
 
                 case ARG_UUID:
@@ -741,7 +766,7 @@ static int parse_argv(int argc, char *argv[]) {
         if (arg_share_system)
                 arg_register = false;
 
-        if (arg_boot && arg_share_system) {
+        if (arg_start_mode != START_PID1 && arg_share_system) {
                 log_error("--boot and --share-system may not be combined.");
                 return -EINVAL;
         }
@@ -3586,6 +3611,10 @@ int main(int argc, char *argv[]) {
         log_parse_environment();
         log_open();
 
+        /* Make sure rename_process() in the stub init process can work */
+        saved_argv = argv;
+        saved_argc = argc;
+
         r = parse_argv(argc, argv);
         if (r <= 0)
                 goto finish;
@@ -3694,7 +3723,7 @@ int main(int argc, char *argv[]) {
                         }
                 }
 
-                if (arg_boot) {
+                if (arg_start_mode == START_BOOT) {
                         if (path_is_os_tree(arg_directory) <= 0) {
                                 log_error("Directory %s doesn't look like an OS root directory (os-release file is missing). Refusing.", arg_directory);
                                 r = -EINVAL;
@@ -4109,7 +4138,19 @@ int main(int argc, char *argv[]) {
                         if (!barrier_place_and_sync(&barrier))
                                 _exit(EXIT_FAILURE);
 
-                        if (arg_boot) {
+                        if (arg_start_mode == START_PID2) {
+                                r = stub_pid1(arg_uuid);
+                                if (r < 0)
+                                {
+                                        log_error_errno(r, "Failed to start as PID2: %m");
+                                        _exit(EXIT_FAILURE);
+                                }
+                        }
+
+                        log_close();
+                        (void) fdset_close_others(fds);
+
+                        if (arg_start_mode == START_BOOT) {
                                 char **a;
                                 size_t l;
 
@@ -4135,6 +4176,7 @@ int main(int argc, char *argv[]) {
                                 execle("/bin/sh", "-sh", NULL, env_use);
                         }
 
+                        log_open();
                         log_error_errno(errno, "execv() failed: %m");
                         _exit(EXIT_FAILURE);
                 }
@@ -4210,7 +4252,7 @@ int main(int argc, char *argv[]) {
                                         goto finish;
                                 }
 
-                                if (arg_boot) {
+                                if (arg_start_mode == START_BOOT) {
                                         /* Try to kill the init system on SIGINT or SIGTERM */
                                         sd_event_add_signal(event, NULL, SIGINT, on_orderly_shutdown, UINT32_TO_PTR(pid));
                                         sd_event_add_signal(event, NULL, SIGTERM, on_orderly_shutdown, UINT32_TO_PTR(pid));
