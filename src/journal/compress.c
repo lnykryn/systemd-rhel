@@ -98,7 +98,12 @@ int compress_blob_lz4(const void *src, uint64_t src_size, void *dst, size_t *dst
         if (src_size < 9)
                 return -ENOBUFS;
 
-        r = LZ4_compress_limitedOutput(src, dst + 8, src_size, src_size - 8 - 1);
+#if LZ4_VERSION_NUMBER >= 10700
+        r = LZ4_compress_default(src, (char*)dst + 8, src_size, src_size - 8 - 1);
+#else
+        r = LZ4_compress_limitedOutput(src, (char*)dst + 8, src_size, src_size - 8 - 1);
+#endif
+
         if (r <= 0)
                 return -ENOBUFS;
 
@@ -458,7 +463,7 @@ int compress_stream_lz4(int fdf, int fdt, off_t max_bytes) {
 
                 total_in += n;
 
-                r = LZ4_compress_continue(&lz4_data, buf, out, n);
+                r = LZ4_compress_fast_continue(&lz4_data, buf, out, n, LZ4_COMPRESSBOUND(LZ4_BUFSIZE), 0);
                 if (r == 0) {
                         log_error("LZ4 compression failed.");
                         return -EBADMSG;
@@ -634,7 +639,7 @@ int decompress_stream_lz4(int fdf, int fdt, off_t max_bytes) {
                 total_out += r;
 
                 if (max_bytes != -1 && total_out > (size_t) max_bytes) {
-                        log_debug("Decompressed stream longer than %zd bytes", max_bytes);
+                        log_debug("Decompressed stream longer than %zd bytes", (size_t) max_bytes);
                         return -EFBIG;
                 }
 
