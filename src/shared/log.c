@@ -52,6 +52,7 @@ static bool show_color = false;
 static bool show_location = false;
 
 static bool upgrade_syslog_to_journal = false;
+static bool always_reopen_console = false;
 
 /* Akin to glibc's __abort_msg; which is private and we hence cannot
  * use here. */
@@ -75,7 +76,7 @@ static int log_open_console(void) {
         if (console_fd >= 0)
                 return 0;
 
-        if (getpid() == 1) {
+        if (always_reopen_console) {
                 console_fd = open_terminal("/dev/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
                 if (console_fd < 0)
                         return console_fd;
@@ -1060,4 +1061,8 @@ void log_received_signal(int level, const struct signalfd_siginfo *si) {
 
 void log_set_upgrade_syslog_to_journal(bool b) {
         upgrade_syslog_to_journal = b;
+}
+
+void log_set_always_reopen_console(bool b) {
+        always_reopen_console = b;
 }
