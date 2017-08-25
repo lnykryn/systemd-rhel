@@ -91,7 +91,7 @@ static int apply_sysctl(const char *property, const char *value) {
 }
 
 static int apply_all(OrderedHashmap *sysctl_options) {
-        int r;
+        int r = 0;
         char *property, *value;
         Iterator i;
 
