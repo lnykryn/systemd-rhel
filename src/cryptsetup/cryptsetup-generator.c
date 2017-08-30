@@ -110,7 +110,6 @@ static int create_disk(
                 "SourcePath=/etc/crypttab\n"
                 "DefaultDependencies=no\n"
                 "Conflicts=umount.target\n"
-                "BindsTo=dev-mapper-%%i.device\n"
                 "IgnoreOnIsolate=true\n"
                 "After=systemd-readahead-collect.service systemd-readahead-replay.service\n"
                 "After=%s\n",
