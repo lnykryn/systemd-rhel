@@ -41,6 +41,7 @@
 typedef struct MountPoint {
         char *path;
         char *options;
+        char *type;
         dev_t devnum;
         LIST_FIELDS(struct MountPoint, mount_point);
 } MountPoint;
@@ -73,7 +74,7 @@ static int mount_points_list_get(MountPoint **head) {
                 return -errno;
 
         for (i = 1;; i++) {
-                _cleanup_free_ char *path = NULL, *options = NULL;
+                _cleanup_free_ char *path = NULL, *options = NULL, *type = NULL;
                 char *p = NULL;
                 MountPoint *m;
                 int k;
@@ -87,11 +88,11 @@ static int mount_points_list_get(MountPoint **head) {
                            "%*s"        /* (6) mount flags */
                            "%*[^-]"     /* (7) optional fields */
                            "- "         /* (8) separator */
-                           "%*s "       /* (9) file system type */
+                           "%ms "       /* (9) file system type */
                            "%*s"        /* (10) mount source */
                            "%ms"        /* (11) mount options */
                            "%*[^\n]",   /* some rubbish at the end */
-                           &path, &options);
+                           &path, &type, &options);
                 if (k != 2) {
                         if (k == EOF)
                                 break;
@@ -129,6 +130,8 @@ static int mount_points_list_get(MountPoint **head) {
                 m->path = p;
                 m->options = options;
                 options = NULL;
+                m->type = type;
+                type = NULL;
 
                 LIST_PREPEND(mount_point, *head, m);
         }
@@ -371,8 +374,12 @@ static int mount_points_list_umount(MountPoint **head, bool *changed, bool log_e
                 /* If we are in a container, don't attempt to
                    read-only mount anything as that brings no real
                    benefits, but might confuse the host, as we remount
-                   the superblock here, not the bind mound. */
-                if (detect_container(NULL) <= 0)  {
+                   the superblock here, not the bind mount.
+                   If the filesystem is a network fs, also skip the
+                   remount.  It brings no value (we cannot leave
+                   a "dirty fs") and could hang if the network is down.  */
+                if (detect_container(NULL) <= 0 &&
+                    !fstype_is_network(m->type)) {
                         _cleanup_free_ char *options = NULL;
                         /* MS_REMOUNT requires that the data parameter
                          * should be the same from the original mount
