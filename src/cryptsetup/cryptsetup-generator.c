@@ -215,7 +215,7 @@ static int create_disk(
 
                         if (!path_equal(uu, "/dev/null")) {
 
-                                if (is_device_path(uu)) {
+                                if (path_startswith(uu, "/dev/")) {
                                         _cleanup_free_ char *dd;
 
                                         dd = unit_name_from_path(uu, ".device");
@@ -229,7 +229,7 @@ static int create_disk(
                 }
         }
 
-        if (is_device_path(u))
+        if (path_startswith(u, "/dev/"))
                 fprintf(f,
                         "BindsTo=%s\n"
                         "After=%s\n"
