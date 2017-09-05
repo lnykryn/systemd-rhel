@@ -4861,7 +4861,9 @@ systemgenerator_PROGRAMS += \
 
 dist_systemunit_DATA += \
 	units/cryptsetup.target \
-	units/cryptsetup-pre.target
+	units/cryptsetup-pre.target \
+	units/remote-cryptsetup.target \
+	units/remote-cryptsetup-pre.target
 
 systemd_cryptsetup_SOURCES = \
 	src/cryptsetup/cryptsetup.c
