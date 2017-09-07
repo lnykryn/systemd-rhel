@@ -763,7 +763,7 @@ static int bus_kernel_make_message(sd_bus *bus, struct kdbus_msg *k) {
                         break;
 
                 default:
-                        log_debug("Got unknown field from kernel %llu", d->type);
+                        log_debug("Got unknown field from kernel %llu", (unsigned long long) d->type);
                 }
         }
 
@@ -1244,7 +1244,7 @@ static int translate_id_change(
         assert(k);
         assert(d);
 
-        sprintf(owner, ":1.%llu", d->id_change.id);
+        sprintf(owner, ":1.%llu", (unsigned long long) d->id_change.id);
 
         return push_name_owner_changed(
                         bus, owner,
@@ -1317,7 +1317,7 @@ static int bus_kernel_translate_message(sd_bus *bus, struct kdbus_msg *k) {
                                 return -EBADMSG;
                         found = d;
                 } else
-                        log_debug("Got unknown field from kernel %llu", d->type);
+                        log_debug("Got unknown field from kernel %llu", (unsigned long long) d->type);
         }
 
         if (!found) {
