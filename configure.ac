@@ -188,7 +188,7 @@ CC_CHECK_FLAGS_APPEND([with_cflags], [CFLAGS], [\
         -Wno-missing-field-initializers \
         -Wno-unused-result \
         -Werror \
-        -Wno-error=maybe-uninitialized \
+        -Wno-error=maybe-uninitialized -Wno-error=cpp \
         -Wdate-time \
         -Wnested-externs \
         -ffast-math \
