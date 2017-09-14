@@ -990,7 +990,7 @@ static int mount_cgroup_hierarchy(const char *dest, const char *controller, cons
         to = strjoina(dest, "/sys/fs/cgroup/", hierarchy);
 
         r = path_is_mount_point(to, false);
-        if (r < 0)
+        if (r < 0 && r != -ENOENT)
                 return log_error_errno(r, "Failed to determine if %s is mounted already: %m", to);
         if (r > 0)
                 return 0;
