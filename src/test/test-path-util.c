@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/mount.h>
 
 #include "path-util.h"
 #include "util.h"
@@ -97,6 +98,66 @@ static void test_path(void) {
                 assert_se(path_equal(path_kill_slashes(p2), "/aaa/./ccc"));
                 assert_se(path_equal(path_kill_slashes(p3), "/./"));
         }
+}
+
+static void test_path_is_mount_point(void) {
+        int fd, rt, rf, rlt, rlf;
+        char tmp_dir[] = "/tmp/test-path-is-mount-point-XXXXXX";
+        _cleanup_free_ char *file1 = NULL, *file2 = NULL, *link1 = NULL, *link2 = NULL;
+
+        assert_se(path_is_mount_point("/", true) > 0);
+        assert_se(path_is_mount_point("/", false) > 0);
+
+        assert_se(path_is_mount_point("/proc", true) > 0);
+        assert_se(path_is_mount_point("/proc", false) > 0);
+
+        assert_se(path_is_mount_point("/proc/1", true) == 0);
+        assert_se(path_is_mount_point("/proc/1", false) == 0);
+
+        assert_se(path_is_mount_point("/sys", true) > 0);
+        assert_se(path_is_mount_point("/sys", false) > 0);
+
+        /* file mountpoints */
+        assert_se(mkdtemp(tmp_dir) != NULL);
+        file1 = path_join(NULL, tmp_dir, "file1");
+        assert_se(file1);
+        file2 = path_join(NULL, tmp_dir, "file2");
+        assert_se(file2);
+        fd = open(file1, O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC, 0664);
+        assert_se(fd > 0);
+        close(fd);
+        fd = open(file2, O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC, 0664);
+        assert_se(fd > 0);
+        close(fd);
+        link1 = path_join(NULL, tmp_dir, "link1");
+        assert_se(link1);
+        assert_se(symlink("file1", link1) == 0);
+        link2 = path_join(NULL, tmp_dir, "link2");
+        assert_se(link1);
+        assert_se(symlink("file2", link2) == 0);
+
+        assert_se(path_is_mount_point(file1, true) == 0);
+        assert_se(path_is_mount_point(file1, false) == 0);
+        assert_se(path_is_mount_point(link1, true) == 0);
+        assert_se(path_is_mount_point(link1, false) == 0);
+
+        /* this test will only work as root */
+        if (mount(file1, file2, NULL, MS_BIND, NULL) >= 0) {
+                rf = path_is_mount_point(file2, false);
+                rt = path_is_mount_point(file2, true);
+                rlf = path_is_mount_point(link2, false);
+                rlt = path_is_mount_point(link2, true);
+
+                assert_se(umount(file2) == 0);
+
+                assert_se(rf == 1);
+                assert_se(rt == 1);
+                assert_se(rlf == 0);
+                assert_se(rlt == 1);
+        } else
+                printf("Skipping bind mount file test: %m\n");
+
+        assert_se(rm_rf(tmp_dir, false, true, false) == 0);
 }
 
 static void test_find_binary(const char *self, bool local) {
@@ -288,6 +349,7 @@ int main(int argc, char **argv) {
         test_make_relative();
         test_strv_resolve();
         test_path_startswith();
+        test_path_is_mount_point();
 
         return 0;
 }
