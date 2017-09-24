@@ -109,6 +109,7 @@ int write_string_file_atomic(const char *fn, const char *line) {
 
 int read_one_line_file(const char *fn, char **line) {
         _cleanup_fclose_ FILE *f = NULL;
+        int r;
 
         assert(fn);
         assert(line);
@@ -117,7 +118,8 @@ int read_one_line_file(const char *fn, char **line) {
         if (!f)
                 return -errno;
 
-        return read_line(f, LONG_LINE_MAX, line);
+        r = read_line(f, LONG_LINE_MAX, line);
+        return r < 0 ? r : 0;
 }
 
 int read_full_stream(FILE *f, char **contents, size_t *size) {
