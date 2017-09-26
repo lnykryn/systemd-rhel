@@ -2727,6 +2727,43 @@ int parse_size(const char *t, off_t base, off_t *size) {
         return 0;
 }
 
+int parse_range(const char *t, unsigned *lower, unsigned *upper) {
+        _cleanup_free_ char *word = NULL;
+        unsigned l, u;
+        int r;
+
+        assert(lower);
+        assert(upper);
+
+        /* Extract the lower bound. */
+        r = extract_first_word(&t, &word, "-", EXTRACT_DONT_COALESCE_SEPARATORS);
+        if (r < 0)
+                return r;
+        if (r == 0)
+                return -EINVAL;
+
+        r = safe_atou(word, &l);
+        if (r < 0)
+                return r;
+
+        /* Check for the upper bound and extract it if needed */
+        if (!t)
+                /* Single number with no dashes. */
+                u = l;
+        else if (!*t)
+                /* Trailing dash is an error. */
+                return -EINVAL;
+        else {
+                r = safe_atou(t, &u);
+                if (r < 0)
+                        return r;
+        }
+
+        *lower = l;
+        *upper = u;
+        return 0;
+}
+
 int make_stdio(int fd) {
         int r, s, t;
 
@@ -3458,6 +3495,60 @@ cpu_set_t* cpu_set_malloc(unsigned *ncpus) {
 
                 n *= 2;
         }
+}
+
+int parse_cpu_set_and_warn(
+                const char *rvalue,
+                cpu_set_t **cpu_set,
+                const char *unit,
+                const char *filename,
+                unsigned line,
+                const char *lvalue) {
+
+        const char *whole_rvalue = rvalue;
+        _cleanup_cpu_free_ cpu_set_t *c = NULL;
+        unsigned ncpus = 0;
+
+        assert(lvalue);
+        assert(rvalue);
+
+        for (;;) {
+                _cleanup_free_ char *word = NULL;
+                unsigned cpu, cpu_lower, cpu_upper;
+                int r;
+
+                r = extract_first_word(&rvalue, &word, WHITESPACE ",", EXTRACT_QUOTES);
+                if (r < 0)
+                        return log_syntax(unit, LOG_ERR, filename, line, r, "Invalid value for %s: %s", lvalue, whole_rvalue);
+                if (r == 0)
+                        break;
+
+                if (!c) {
+                        c = cpu_set_malloc(&ncpus);
+                        if (!c)
+                                return log_oom();
+                }
+
+                r = parse_range(word, &cpu_lower, &cpu_upper);
+                if (r < 0)
+                        return log_syntax(unit, LOG_ERR, filename, line, r, "Failed to parse CPU affinity '%s'", word);
+                if (cpu_lower >= ncpus || cpu_upper >= ncpus)
+                        return log_syntax(unit, LOG_ERR, filename, line, EINVAL, "CPU out of range '%s' ncpus is %u", word, ncpus);
+
+                if (cpu_lower > cpu_upper)
+                        log_syntax(unit, LOG_WARNING, filename, line, 0, "Range '%s' is invalid, %u > %u", word, cpu_lower, cpu_upper);
+                else
+                        for (cpu = cpu_lower; cpu <= cpu_upper; cpu++)
+                                CPU_SET_S(cpu, CPU_ALLOC_SIZE(ncpus), c);
+        }
+
+        /* On success, sets *cpu_set and returns ncpus for the system. */
+        if (c) {
+                *cpu_set = c;
+                c = NULL;
+        }
+
+        return (int) ncpus;
 }
 
 int status_vprintf(const char *status, bool ellipse, bool ephemeral, const char *format, va_list ap) {

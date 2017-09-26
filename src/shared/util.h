@@ -136,6 +136,11 @@ bool streq_ptr(const char *a, const char *b) _pure_;
 
 #define malloc0(n) (calloc((n), 1))
 
+static inline void *mfree(void *memory) {
+        free(memory);
+        return NULL;
+}
+
 static inline const char* yes_no(bool b) {
         return b ? "yes" : "no";
 }
@@ -195,6 +200,7 @@ void safe_close_pair(int p[]);
 void close_many(const int fds[], unsigned n_fd);
 
 int parse_size(const char *t, off_t base, off_t *size);
+int parse_range(const char *t, unsigned *lower, unsigned *upper);
 
 int parse_boolean(const char *v) _pure_;
 int parse_pid(const char *s, pid_t* ret_pid);
@@ -474,6 +480,7 @@ int rm_rf_dangerous(const char *path, bool only_dirs, bool delete_root, bool hon
 int pipe_eof(int fd);
 
 cpu_set_t* cpu_set_malloc(unsigned *ncpus);
+int parse_cpu_set_and_warn(const char *rvalue, cpu_set_t **cpu_set, const char *unit, const char *filename, unsigned line, const char *lvalue);
 
 int status_vprintf(const char *status, bool ellipse, bool ephemeral, const char *format, va_list ap) _printf_(4,0);
 int status_printf(const char *status, bool ellipse, bool ephemeral, const char *format, ...) _printf_(4,5);
@@ -692,6 +699,7 @@ DEFINE_TRIVIAL_CLEANUP_FUNC(FILE*, fclose);
 DEFINE_TRIVIAL_CLEANUP_FUNC(FILE*, pclose);
 DEFINE_TRIVIAL_CLEANUP_FUNC(DIR*, closedir);
 DEFINE_TRIVIAL_CLEANUP_FUNC(FILE*, endmntent);
+DEFINE_TRIVIAL_CLEANUP_FUNC(cpu_set_t*, CPU_FREE);
 
 #define _cleanup_free_ _cleanup_(freep)
 #define _cleanup_close_ _cleanup_(closep)
@@ -702,6 +710,7 @@ DEFINE_TRIVIAL_CLEANUP_FUNC(FILE*, endmntent);
 #define _cleanup_closedir_ _cleanup_(closedirp)
 #define _cleanup_endmntent_ _cleanup_(endmntentp)
 #define _cleanup_close_pair_ _cleanup_(close_pairp)
+#define _cleanup_cpu_free_ _cleanup_(CPU_FREEp)
 
 _malloc_  _alloc_(1, 2) static inline void *malloc_multiply(size_t a, size_t b) {
         if (_unlikely_(b != 0 && a > ((size_t) -1) / b))
