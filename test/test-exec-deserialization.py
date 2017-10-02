@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 #
 #  Copyright 2017 Michal Sekletar <msekleta@redhat.com>
