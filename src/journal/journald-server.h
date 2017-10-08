@@ -143,6 +143,8 @@ typedef struct Server {
 
         /* Cached cgroup root, so that we don't have to query that all the time */
         char *cgroup_root;
+
+        size_t line_max;
 } Server;
 
 #define N_IOVEC_META_FIELDS 20
@@ -157,6 +159,7 @@ void server_driver_message(Server *s, sd_id128_t message_id, const char *format,
 const struct ConfigPerfItem* journald_gperf_lookup(const char *key, unsigned length);
 
 int config_parse_storage(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
+int config_parse_line_max(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
 
 const char *storage_to_string(Storage s) _const_;
 Storage storage_from_string(const char *s) _pure_;
