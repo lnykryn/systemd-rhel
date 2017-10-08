@@ -67,6 +67,10 @@
 
 #define RECHECK_AVAILABLE_SPACE_USEC (30*USEC_PER_SEC)
 
+/* Pick a good default that is likely to fit into AF_UNIX and AF_INET SOCK_DGRAM datagrams, and even leaves some room
++ * for a bit of additional metadata. */
+#define DEFAULT_LINE_MAX (48*1024)
+
 static const char* const storage_table[_STORAGE_MAX] = {
         [STORAGE_AUTO] = "auto",
         [STORAGE_VOLATILE] = "volatile",
@@ -83,8 +87,70 @@ static const char* const split_mode_table[_SPLIT_MAX] = {
         [SPLIT_NONE] = "none",
 };
 
+
 DEFINE_STRING_TABLE_LOOKUP(split_mode, SplitMode);
 DEFINE_CONFIG_PARSE_ENUM(config_parse_split_mode, split_mode, SplitMode, "Failed to parse split mode setting");
+
+int config_parse_line_max(
+                const char* unit,
+                const char *filename,
+                unsigned line,
+                const char *section,
+                unsigned section_line,
+                const char *lvalue,
+                int ltype,
+                const char *rvalue,
+                void *data,
+                void *userdata) {
+
+        size_t *sz = data;
+        int r;
+
+        assert(filename);
+        assert(lvalue);
+        assert(rvalue);
+        assert(data);
+
+        if (isempty(rvalue))
+                /* Empty assignment means default */
+                *sz = DEFAULT_LINE_MAX;
+        else {
+                uint64_t v;
+                off_t u;
+
+                r = parse_size(rvalue, 1024, &u);
+                if (r < 0) {
+                        log_syntax(unit, LOG_ERR, filename, line, r, "Failed to parse LineMax= value, ignoring: %s", rvalue);
+                        return 0;
+                }
+
+                /* Backport note */
+                /* Upstream ditched use of off_t however our parse_size implementation still takes off_t*
+                 * as an argument. Since we compile with -Werror, we have two choices, either disable sign-compare
+                 * warning or do this casting so we don't have to change rest of the code. I think it is
+                 * better to do cast here instead of rewriting the code so it deals with off_t instead of
+                 * uint64_t. Doing conversion off_t -> uint64_t is something that we should think about. */
+                v = (uint64_t) u;
+
+                if (v < 79) {
+                        /* Why specify 79 here as minimum line length? Simply, because the most common traditional
+                         * terminal size is 80ch, and it might make sense to break one character before the natural
+                         * line break would occur on that. */
+                        log_syntax(unit, LOG_WARNING, filename, line, 0, "LineMax= too small, clamping to 79: %s", rvalue);
+                        *sz = 79;
+                } else if (v > (uint64_t) (SSIZE_MAX-1)) {
+                        /* So, why specify SSIZE_MAX-1 here? Because that's one below the largest size value read()
+                         * can return, and we need one extra byte for the trailing NUL byte. Of course IRL such large
+                         * memory allocations will fail anyway, hence this limit is mostly theoretical anyway, as we'll
+                         * fail much earlier anyway. */
+                        log_syntax(unit, LOG_WARNING, filename, line, 0, "LineMax= too large, clamping to %" PRIu64 ": %s", (uint64_t) (SSIZE_MAX-1), rvalue);
+                        *sz = SSIZE_MAX-1;
+                } else
+                        *sz = (size_t) v;
+        }
+
+        return 0;
+}
 
 static uint64_t available_space(Server *s, bool verbose) {
         char ids[33];
@@ -1503,6 +1569,8 @@ int server_init(Server *s) {
         s->max_level_kmsg = LOG_NOTICE;
         s->max_level_console = LOG_INFO;
         s->max_level_wall = LOG_EMERG;
+
+        s->line_max = DEFAULT_LINE_MAX;
 
         memset(&s->system_metrics, 0xFF, sizeof(s->system_metrics));
         memset(&s->runtime_metrics, 0xFF, sizeof(s->runtime_metrics));
