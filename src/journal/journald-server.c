@@ -253,11 +253,11 @@ static int system_journal_open(Server *s, bool flush_requested) {
         if (r < 0)
                 return log_error_errno(r, "Failed to get machine id: %m");
 
-        sd_id128_to_string(machine, ids);
-
         if (!s->system_journal &&
             IN_SET(s->storage, STORAGE_PERSISTENT, STORAGE_AUTO) &&
             (flush_requested || flushed_flag_is_set())) {
+
+                sd_id128_to_string(machine, ids);
 
                 /* If in auto mode: first try to create the machine
                  * path, but not the prefix.
@@ -274,9 +274,10 @@ static int system_journal_open(Server *s, bool flush_requested) {
                 fn = strjoina(fn, "/system.journal");
                 r = journal_file_open_reliably(fn, O_RDWR|O_CREAT, 0640, s->compress, s->seal, &s->system_metrics, s->mmap, NULL, &s->system_journal);
 
-                if (r >= 0)
+                if (r >= 0) {
                         server_fix_perms(s, s->system_journal, 0);
-                else if (r < 0) {
+                        available_space(s, true);
+                } else if (r < 0) {
                         if (r != -ENOENT && r != -EROFS)
                                 log_warning_errno(r, "Failed to open system journal: %m");
 
@@ -296,6 +297,8 @@ static int system_journal_open(Server *s, bool flush_requested) {
 
         if (!s->runtime_journal &&
             (s->storage != STORAGE_NONE)) {
+
+                sd_id128_to_string(machine, ids);
 
                 fn = strjoin("/run/log/journal/", ids, "/system.journal", NULL);
                 if (!fn)
@@ -333,11 +336,11 @@ static int system_journal_open(Server *s, bool flush_requested) {
                                 return log_error_errno(r, "Failed to open runtime journal: %m");
                 }
 
-                if (s->runtime_journal)
+                if (s->runtime_journal) {
                         server_fix_perms(s, s->runtime_journal, 0);
+                        available_space(s, true);
+                }
         }
-
-        available_space(s, true);
 
         return r;
 }
