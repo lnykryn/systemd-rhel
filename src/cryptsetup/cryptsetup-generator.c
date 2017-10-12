@@ -114,7 +114,7 @@ static int create_disk(
                 "IgnoreOnIsolate=true\n"
                 "After=systemd-readahead-collect.service systemd-readahead-replay.service\n"
                 "After=%s\n",
-                netdev ? "remote-cryptsetup-pre.target" : "cryptsetup-pre.target");
+                netdev ? "remote-fs-pre.target" : "cryptsetup-pre.target");
 
         if (!nofail)
                 fprintf(f,
