@@ -157,7 +157,7 @@ static void test_path_is_mount_point(void) {
         } else
                 printf("Skipping bind mount file test: %m\n");
 
-        assert_se(rm_rf(tmp_dir, false, true, false) == 0);
+        assert_se(rm_rf_dangerous(tmp_dir, false, true, false) == 0);
 }
 
 static void test_find_binary(const char *self, bool local) {
