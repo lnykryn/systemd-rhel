@@ -130,3 +130,4 @@ const char* mount_result_to_string(MountResult i) _const_;
 MountResult mount_result_from_string(const char *s) _pure_;
 
 void warn_if_dir_nonempty(const char *unit, const char* where);
+const char *mount_get_fstype(const Mount *m);
