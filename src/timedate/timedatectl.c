@@ -93,8 +93,8 @@ static const char *jump_str(int delta_minutes, char *s, size_t size) {
 }
 
 static void print_status_info(const StatusInfo *i) {
-        char a[FORMAT_TIMESTAMP_MAX];
-        char b[FORMAT_TIMESTAMP_MAX];
+        char a[LINE_MAX];
+        char b[LINE_MAX];
         char s[32];
         struct tm tm;
         time_t sec;
@@ -104,6 +104,7 @@ static void print_status_info(const StatusInfo *i) {
         int dn = 0;
         bool is_dstc = false, is_dstn = false;
         int r;
+        size_t n;
 
         assert(i);
 
@@ -123,11 +124,11 @@ static void print_status_info(const StatusInfo *i) {
                 fprintf(stderr, "Warning: Could not get time from timedated and not operating locally.\n\n");
 
         if (have_time) {
-                xstrftime(a, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&sec, &tm));
-                printf("      Local time: %.*s\n", (int) sizeof(a), a);
+                n = strftime(a, sizeof a, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&sec, &tm));
+                printf("      Local time: %s\n", n > 0 ? a : "n/a");
 
-                xstrftime(a, "%a %Y-%m-%d %H:%M:%S UTC", gmtime_r(&sec, &tm));
-                printf("  Universal time: %.*s\n", (int) sizeof(a), a);
+                n = strftime(a, sizeof a, "%a %Y-%m-%d %H:%M:%S UTC", gmtime_r(&sec, &tm));
+                printf("  Universal time: %s\n", n > 0 ? a : "n/a");
         } else {
                 printf("      Local time: %s\n", "n/a");
                 printf("  Universal time: %s\n", "n/a");
@@ -137,24 +138,26 @@ static void print_status_info(const StatusInfo *i) {
                 time_t rtc_sec;
 
                 rtc_sec = (time_t)(i->rtc_time / USEC_PER_SEC);
-                xstrftime(a, "%a %Y-%m-%d %H:%M:%S", gmtime_r(&rtc_sec, &tm));
-                printf("        RTC time: %.*s\n", (int) sizeof(a), a);
+                n = strftime(a, sizeof a, "%a %Y-%m-%d %H:%M:%S", gmtime_r(&rtc_sec, &tm));
+                printf("        RTC time: %s\n", n > 0 ? a : "n/a");
         } else
                 printf("        RTC time: %s\n", "n/a");
 
         if (have_time)
-                xstrftime(a, "%Z, %z", localtime_r(&sec, &tm));
+                n = strftime(a, sizeof a, "%Z, %z", localtime_r(&sec, &tm));
 
-        printf("       Time zone: %s (%.*s)\n"
+        printf("       Time zone: %s (%s)\n"
                "     NTP enabled: %s\n"
                "NTP synchronized: %s\n"
                " RTC in local TZ: %s\n",
-               strna(i->timezone), (int) sizeof(a), have_time ? a : "n/a",
+               strna(i->timezone), have_time && n > 0 ? a : "n/a",
                i->ntp_capable ? yes_no(i->ntp_enabled) : "n/a",
                yes_no(i->ntp_synced),
                yes_no(i->rtc_local));
 
         if (have_time) {
+                size_t m;
+
                 r = time_get_dst(sec, "/etc/localtime",
                                  &tc, &zc, &is_dstc,
                                  &tn, &dn, &zn, &is_dstn);
@@ -164,26 +167,26 @@ static void print_status_info(const StatusInfo *i) {
                         printf("      DST active: %s\n", yes_no(is_dstc));
 
                         t = tc - 1;
-                        xstrftime(a, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&t, &tm));
+                        n = strftime(a, sizeof a, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&t, &tm));
 
-                        xstrftime(b, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&tc, &tm));
+                        m = strftime(b, sizeof b, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&tc, &tm));
                         printf(" Last DST change: DST %s at\n"
-                               "                  %.*s\n"
-                               "                  %.*s\n",
+                               "                  %s\n"
+                               "                  %s\n",
                                is_dstc ? "began" : "ended",
-                               (int) sizeof(a), a,
-                               (int) sizeof(b), b);
+                               n > 0 ? a : "n/a",
+                               m > 0 ? b : "n/a");
 
                         t = tn - 1;
-                        xstrftime(a, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&t, &tm));
-                        xstrftime(b, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&tn, &tm));
+                        n = strftime(a, sizeof a, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&t, &tm));
+                        m = strftime(b, sizeof b, "%a %Y-%m-%d %H:%M:%S %Z", localtime_r(&tn, &tm));
                         printf(" Next DST change: DST %s (the clock jumps %s) at\n"
-                               "                  %.*s\n"
-                               "                  %.*s\n",
+                               "                  %s\n"
+                               "                  %s\n",
                                is_dstn ? "begins" : "ends",
                                jump_str(dn, s, sizeof(s)),
-                               (int) sizeof(a), a,
-                               (int) sizeof(b), b);
+                               n > 0 ? a : "n/a",
+                               m > 0 ? b : "n/a");
                 }
         } else
                 printf("      DST active: %s\n", yes_no(is_dstc));
