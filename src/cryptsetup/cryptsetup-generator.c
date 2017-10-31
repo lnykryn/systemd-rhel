@@ -214,10 +214,8 @@ static int create_disk(
                         return log_oom();
 
                 mkdir_parents_label(to, 0755);
-                if (symlink(from, to) < 0) {
-                        free(to);
+                if (symlink(from, to) < 0)
                         return log_error_errno(errno, "Failed to create symlink %s: %m", to);
-                }
         }
 
         free(to);
