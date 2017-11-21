@@ -21,9 +21,12 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
+typedef struct StdoutStream StdoutStream;
+
 #include "fdset.h"
 #include "journald-server.h"
 
 int server_open_stdout_socket(Server *s, FDSet *fds);
 
 void stdout_stream_free(StdoutStream *s);
+void stdout_stream_send_notify(StdoutStream *s);

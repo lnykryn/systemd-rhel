@@ -27,12 +27,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+typedef struct Server Server;
+
 #include "sd-event.h"
 #include "journal-file.h"
 #include "hashmap.h"
 #include "util.h"
 #include "audit.h"
 #include "journald-rate-limit.h"
+#include "journald-stream.h"
 #include "list.h"
 
 typedef enum Storage {
@@ -52,15 +55,14 @@ typedef enum SplitMode {
         _SPLIT_INVALID = -1
 } SplitMode;
 
-typedef struct StdoutStream StdoutStream;
-
-typedef struct Server {
+struct Server {
         int syslog_fd;
         int native_fd;
         int stdout_fd;
         int dev_kmsg_fd;
         int audit_fd;
         int hostname_fd;
+        int notify_fd;
 
         sd_event *event;
 
@@ -75,6 +77,7 @@ typedef struct Server {
         sd_event_source *sigterm_event_source;
         sd_event_source *sigint_event_source;
         sd_event_source *hostname_event_source;
+        sd_event_source *notify_event_source;
 
         JournalFile *runtime_journal;
         JournalFile *system_journal;
@@ -114,6 +117,7 @@ typedef struct Server {
         usec_t oldest_file_usec;
 
         LIST_HEAD(StdoutStream, stdout_streams);
+        LIST_HEAD(StdoutStream, stdout_streams_notify_queue);
         unsigned n_stdout_streams;
 
         char *tty_path;
@@ -135,6 +139,7 @@ typedef struct Server {
 
         struct udev *udev;
 
+        bool sent_notify_ready;
         bool sync_scheduled;
 
         char machine_id_field[sizeof("_MACHINE_ID=") + 32];
@@ -145,7 +150,7 @@ typedef struct Server {
         char *cgroup_root;
 
         size_t line_max;
-} Server;
+};
 
 #define N_IOVEC_META_FIELDS 20
 #define N_IOVEC_KERNEL_FIELDS 64
