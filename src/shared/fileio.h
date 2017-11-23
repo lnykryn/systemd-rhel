@@ -43,3 +43,5 @@ int write_env_file(const char *fname, char **l);
 int executable_is_script(const char *path, char **interpreter);
 
 int get_status_field(const char *filename, const char *pattern, char **field);
+
+int read_line(FILE *f, size_t limit, char **ret);
