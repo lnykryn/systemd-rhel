@@ -1747,7 +1747,6 @@ CGroupControllerMask cg_mask_supported(void) {
 
 int cg_kernel_controllers(Set *controllers) {
         _cleanup_fclose_ FILE *f = NULL;
-        char buf[LINE_MAX];
         int r;
 
         assert(controllers);
@@ -1760,7 +1759,7 @@ int cg_kernel_controllers(Set *controllers) {
         }
 
         /* Ignore the header line */
-        (void) fgets(buf, sizeof(buf), f);
+        (void) read_line(f, (size_t) -1, NULL);
 
         for (;;) {
                 char *controller;
