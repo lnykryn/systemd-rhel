@@ -25,6 +25,7 @@
 #include "strv.h"
 #include "utf8.h"
 #include "ctype.h"
+#include "def.h"
 #include "fileio.h"
 
 int write_string_stream(FILE *f, const char *line) {
@@ -108,7 +109,6 @@ int write_string_file_atomic(const char *fn, const char *line) {
 
 int read_one_line_file(const char *fn, char **line) {
         _cleanup_fclose_ FILE *f = NULL;
-        char t[LINE_MAX], *c;
 
         assert(fn);
         assert(line);
@@ -117,21 +117,7 @@ int read_one_line_file(const char *fn, char **line) {
         if (!f)
                 return -errno;
 
-        if (!fgets(t, sizeof(t), f)) {
-
-                if (ferror(f))
-                        return errno ? -errno : -EIO;
-
-                t[0] = 0;
-        }
-
-        c = strdup(t);
-        if (!c)
-                return -ENOMEM;
-        truncate_nl(c);
-
-        *line = c;
-        return 0;
+        return read_line(f, LONG_LINE_MAX, line);
 }
 
 int read_full_stream(FILE *f, char **contents, size_t *size) {
