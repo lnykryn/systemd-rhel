@@ -26,6 +26,7 @@
 #include "macro.h"
 
 #define UTF8_REPLACEMENT_CHARACTER "\xef\xbf\xbd"
+#define UTF8_BYTE_ORDER_MARK "\xef\xbb\xbf"
 
 const char *utf8_is_valid(const char *s) _pure_;
 char *ascii_is_valid(const char *s) _pure_;
