@@ -129,8 +129,12 @@ static int iterate_dir(
 
         d = opendir(path);
         if (!d) {
-                if (errno == ENOENT)
-                        return 0;
+                /* Ignore ENOENT, after all most units won't have a drop-in dir.
+                 * Also ignore ENAMETOOLONG, users are not even able to create
+                 * the drop-in dir in such case. This mostly happens for device units with long /sys path.
+                 * */
+                if (IN_SET(errno, ENOENT, ENAMETOOLONG))
+                            return 0;
 
                 log_error_errno(errno, "Failed to open directory %s: %m", path);
                 return -errno;
