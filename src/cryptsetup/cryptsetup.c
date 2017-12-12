@@ -217,23 +217,6 @@ static void log_glue(int level, const char *msg, void *usrptr) {
         log_debug("%s", msg);
 }
 
-static int disk_major_minor(const char *path, char **ret) {
-        struct stat st;
-
-        assert(path);
-
-        if (stat(path, &st) < 0)
-                return -errno;
-
-        if (!S_ISBLK(st.st_mode))
-                return -EINVAL;
-
-        if (asprintf(ret, "/dev/block/%d:%d", major(st.st_rdev), minor(st.st_rdev)) < 0)
-                return -errno;
-
-        return 0;
-}
-
 static char* disk_description(const char *path) {
 
         static const char name_fields[] =
@@ -299,11 +282,11 @@ static int get_password(const char *vol, const char *src, usec_t until, bool acc
         int r = 0;
         char **p;
         _cleanup_free_ char *text = NULL;
-        _cleanup_free_ char *escaped_name = NULL;
+        _cleanup_free_ char *disk_path = NULL;
         char *id;
         const char *name = NULL;
         _cleanup_free_ char *description = NULL, *name_buffer = NULL,
-                *mount_point = NULL, *maj_min = NULL;
+                *mount_point = NULL;
 
         assert(vol);
         assert(src);
@@ -311,6 +294,10 @@ static int get_password(const char *vol, const char *src, usec_t until, bool acc
 
         description = disk_description(src);
         mount_point = disk_mount_point(vol);
+
+        disk_path = cescape(src);
+        if (!disk_path)
+                return log_oom();
 
         if (description && streq(vol, description)) {
                 /* If the description string is simply the
@@ -335,19 +322,7 @@ static int get_password(const char *vol, const char *src, usec_t until, bool acc
         if (asprintf(&text, "Please enter passphrase for disk %s!", name) < 0)
                 return log_oom();
 
-        if (src)
-                (void) disk_major_minor(src, &maj_min);
-
-        if (maj_min) {
-                escaped_name = maj_min;
-                maj_min = NULL;
-        } else
-                escaped_name = cescape(src);
-
-        if (!escaped_name)
-                return log_oom();
-
-        id = strjoina("cryptsetup:", escaped_name);
+        id = strjoina("cryptsetup:", disk_path);
 
         r = ask_password_auto(text, "drive-harddisk", id, until, accept_cached, passwords);
         if (r < 0)
@@ -361,7 +336,7 @@ static int get_password(const char *vol, const char *src, usec_t until, bool acc
                 if (asprintf(&text, "Please enter passphrase for disk %s! (verification)", name) < 0)
                         return log_oom();
 
-                id = strjoina("cryptsetup-verification:", escaped_name);
+                id = strjoina("cryptsetup-verification:", disk_path);
 
                 r = ask_password_auto(text, "drive-harddisk", id, until, false, &passwords2);
                 if (r < 0)
