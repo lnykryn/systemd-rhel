@@ -21,6 +21,7 @@
 
 #include "login-shared.h"
 #include "def.h"
+#include "util.h"
 
 bool session_id_valid(const char *id) {
         assert(id);
