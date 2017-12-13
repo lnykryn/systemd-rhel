@@ -21,8 +21,6 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
-#include "util.h"
-
 #define DEFAULT_TIMEOUT_USEC (90*USEC_PER_SEC)
 #define DEFAULT_RESTART_USEC (100*USEC_PER_MSEC)
 #define DEFAULT_CONFIRM_USEC (30*USEC_PER_SEC)
