@@ -22,6 +22,7 @@
 ***/
 
 #include <alloca.h>
+#include <def.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <time.h>
@@ -1109,5 +1110,20 @@ uint64_t system_tasks_max_scale(uint64_t v, uint64_t max);
 #define IOVEC_INIT_STRING(string) IOVEC_INIT((char*) string, strlen(string))
 #define IOVEC_MAKE_STRING(string) (struct iovec) IOVEC_INIT_STRING(string)
 
+
 char* set_iovec_string_field(struct iovec *iovec, unsigned int *n_iovec, const char *field, const char *value);
 char* set_iovec_field_free(struct iovec *iovec, unsigned int *n_iovec, const char *field, char *value);
+
+int wait_for_terminate_with_timeout(pid_t pid, usec_t timeout);
+
+static inline void block_signals_reset(sigset_t *ss) {
+        assert_se(sigprocmask(SIG_SETMASK, ss, NULL) >= 0);
+}
+
+#define BLOCK_SIGNALS(...)                                                         \
+        _cleanup_(block_signals_reset) _unused_ sigset_t _saved_sigset = ({        \
+                sigset_t _t;                                                       \
+                assert_se(sigprocmask(SIG_SETMASK, NULL, &_t) == 0);               \
+                assert_se(sigprocmask_many(SIG_BLOCK, __VA_ARGS__, -1) >= 0);      \
+                _t;                                                                \
+        })
