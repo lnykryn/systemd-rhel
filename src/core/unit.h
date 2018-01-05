@@ -376,7 +376,7 @@ struct UnitVTable {
         void (*notify_cgroup_empty)(Unit *u);
 
         /* Called whenever a process of this unit sends us a message */
-        void (*notify_message)(Unit *u, pid_t pid, char **tags, FDSet *fds);
+        void (*notify_message)(Unit *u, const struct ucred *ucred, char **tags, FDSet *fds);
 
         /* Called whenever a name this Unit registered for comes or
          * goes away. */
