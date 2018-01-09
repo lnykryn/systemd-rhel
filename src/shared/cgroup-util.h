@@ -36,7 +36,7 @@ typedef enum CGroupControllerMask {
         CGROUP_MEMORY = 8,
         CGROUP_DEVICE = 16,
         CGROUP_PIDS = 32,
-        _CGROUP_CONTROLLER_MASK_ALL = 31
+        _CGROUP_CONTROLLER_MASK_ALL = 63
 } CGroupControllerMask;
 
 /* Special values for the cpu.shares attribute */
