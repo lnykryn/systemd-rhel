@@ -712,7 +712,7 @@ static int automount_start_expire(Automount *a) {
                         automount_dispatch_expire, a);
 }
 
-static void automount_enter_runnning(Automount *a) {
+static void automount_enter_running(Automount *a) {
         _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
         struct stat st;
         int r;
@@ -744,18 +744,22 @@ static void automount_enter_runnning(Automount *a) {
                 goto fail;
         }
 
-        if (!S_ISDIR(st.st_mode) || st.st_dev != a->dev_id)
+        /* The mount unit may have been explicitly started before we got the
+         * autofs request. Ack it to unblock anything waiting on the mount point. */
+        if (!S_ISDIR(st.st_mode) || st.st_dev != a->dev_id) {
                 log_unit_info(UNIT(a)->id,
                               "%s's automount point already active?", UNIT(a)->id);
-        else {
-                r = manager_add_job(UNIT(a)->manager, JOB_START, UNIT_TRIGGER(UNIT(a)),
-                                    JOB_REPLACE, true, &error, NULL);
-                if (r < 0) {
-                        log_unit_warning(UNIT(a)->id,
-                                         "%s failed to queue mount startup job: %s",
-                                         UNIT(a)->id, bus_error_message(&error, r));
-                        goto fail;
-                }
+                automount_send_ready(a, a->tokens, 0);
+                return;
+        }
+
+        r = manager_add_job(UNIT(a)->manager, JOB_START, UNIT_TRIGGER(UNIT(a)),
+                        JOB_REPLACE, true, &error, NULL);
+        if (r < 0) {
+                log_unit_warning(UNIT(a)->id,
+                                "%s failed to queue mount startup job: %s",
+                                UNIT(a)->id, bus_error_message(&error, r));
+                goto fail;
         }
 
         r = automount_start_expire(a);
@@ -979,7 +983,7 @@ static int automount_dispatch_io(sd_event_source *s, int fd, uint32_t events, vo
                         goto fail;
                 }
 
-                automount_enter_runnning(a);
+                automount_enter_running(a);
                 break;
 
         case autofs_ptype_expire_direct:
