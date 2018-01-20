@@ -150,6 +150,10 @@ static int scope_load(Unit *u) {
         if (!u->transient && UNIT(s)->manager->n_reloading <= 0)
                 return -ENOENT;
 
+        r = unit_load_fragment(u);
+        if (r < 0)
+                return r;
+
         u->load_state = UNIT_LOADED;
 
         r = unit_load_dropin(u);
