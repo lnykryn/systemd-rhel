@@ -126,6 +126,13 @@ static inline unsigned long ALIGN_POWER2(unsigned long u) {
 #define ELEMENTSOF(x) (sizeof(x)/sizeof((x)[0]))
 
 /*
+ * STRLEN - return the length of a string literal, minus the trailing NUL byte.
+ *          Contrary to strlen(), this is a constant expression.
+ * @x: a string literal.
+ */
+#define STRLEN(x) (sizeof(""x"") - 1)
+
+/*
  * container_of - cast a member of a structure out to the containing structure
  * @ptr: the pointer to the member.
  * @type: the type of the container struct this is embedded in.
