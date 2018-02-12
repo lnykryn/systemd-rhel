@@ -861,3 +861,17 @@ char *prefix_root(const char *root, const char *path) {
         strcpy(p, path);
         return n;
 }
+
+int inotify_add_watch_fd(int fd, int what, uint32_t mask) {
+        char path[strlen("/proc/self/fd/") + DECIMAL_STR_MAX(int) + 1];
+        int r;
+
+        /* This is like inotify_add_watch(), except that the file to watch is not referenced by a path, but by an fd */
+        xsprintf(path, "/proc/self/fd/%i", what);
+
+        r = inotify_add_watch(fd, path, mask);
+        if (r < 0)
+                return -errno;
+
+        return r;
+}
