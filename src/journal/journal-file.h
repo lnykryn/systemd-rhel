@@ -121,6 +121,8 @@ typedef struct JournalFile {
 
         void *fsprg_seed;
         size_t fsprg_seed_size;
+
+        unsigned last_seen_generation;
 #endif
 } JournalFile;
 
