@@ -65,6 +65,8 @@ int fsck_exists(const char *fstype);
 
 char *prefix_root(const char *root, const char *path);
 
+int inotify_add_watch_fd(int fd, int what, uint32_t mask);
+
 /* Similar to prefix_root(), but returns an alloca() buffer, or
  * possibly a const pointer into the path parameter */
 #define prefix_roota(root, path)                                        \
