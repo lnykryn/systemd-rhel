@@ -475,6 +475,7 @@ static void path_enter_dead(Path *p, PathResult f) {
 
 static void path_enter_running(Path *p) {
         _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
+        Unit *trigger;
         int r;
 
         assert(p);
@@ -483,8 +484,14 @@ static void path_enter_running(Path *p) {
         if (unit_stop_pending(UNIT(p)))
                 return;
 
-        r = manager_add_job(UNIT(p)->manager, JOB_START, UNIT_TRIGGER(UNIT(p)),
-                            JOB_REPLACE, true, &error, NULL);
+        trigger = UNIT_TRIGGER(UNIT(p));
+        if (!trigger) {
+                log_unit_error(UNIT(p)->id, "Unit to trigger vanished.");
+                path_enter_dead(p, TIMER_FAILURE_RESOURCES);
+                return;
+        }
+
+        r = manager_add_job(UNIT(p)->manager, JOB_START, trigger, JOB_REPLACE, true, &error, NULL);
         if (r < 0)
                 goto fail;
 
@@ -566,12 +573,17 @@ static void path_mkdir(Path *p) {
 
 static int path_start(Unit *u) {
         Path *p = PATH(u);
+        Unit *trigger;
 
         assert(p);
         assert(p->state == PATH_DEAD || p->state == PATH_FAILED);
 
-        if (UNIT_TRIGGER(u)->load_state != UNIT_LOADED)
+
+        trigger = UNIT_TRIGGER(u);
+        if (!trigger || trigger->load_state != UNIT_LOADED) {
+                log_unit_error(u->id, "Refusing to start, unit to trigger not loaded.");
                 return -ENOENT;
+        }
 
         path_mkdir(p);
 
