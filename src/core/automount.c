@@ -715,6 +715,7 @@ static int automount_start_expire(Automount *a) {
 static void automount_enter_running(Automount *a) {
         _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
         struct stat st;
+        Unit *trigger;
         int r;
 
         assert(a);
@@ -753,8 +754,13 @@ static void automount_enter_running(Automount *a) {
                 return;
         }
 
-        r = manager_add_job(UNIT(a)->manager, JOB_START, UNIT_TRIGGER(UNIT(a)),
-                        JOB_REPLACE, true, &error, NULL);
+        trigger = UNIT_TRIGGER(UNIT(a));
+        if (!trigger) {
+                log_unit_error(UNIT(a)->id, "Unit to trigger vanished.");
+                goto fail;
+        }
+
+        r = manager_add_job(UNIT(a)->manager, JOB_START, trigger, JOB_REPLACE, true, &error, NULL);
         if (r < 0) {
                 log_unit_warning(UNIT(a)->id,
                                 "%s failed to queue mount startup job: %s",
@@ -775,6 +781,7 @@ fail:
 
 static int automount_start(Unit *u) {
         Automount *a = AUTOMOUNT(u);
+        Unit *trigger;
 
         assert(a);
         assert(a->state == AUTOMOUNT_DEAD || a->state == AUTOMOUNT_FAILED);
@@ -786,8 +793,11 @@ static int automount_start(Unit *u) {
                 return -EEXIST;
         }
 
-        if (UNIT_TRIGGER(u)->load_state != UNIT_LOADED)
+        trigger = UNIT_TRIGGER(u);
+        if (!trigger || trigger->load_state != UNIT_LOADED) {
+                log_unit_error(u->id, "Refusing to start, unit to trigger not loaded.");
                 return -ENOENT;
+        }
 
         a->result = AUTOMOUNT_SUCCESS;
         automount_enter_waiting(a);
@@ -936,6 +946,7 @@ static int automount_dispatch_io(sd_event_source *s, int fd, uint32_t events, vo
         _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
         union autofs_v5_packet_union packet;
         Automount *a = AUTOMOUNT(userdata);
+        Unit *trigger;
         ssize_t l;
         int r;
 
@@ -1002,7 +1013,13 @@ static int automount_dispatch_io(sd_event_source *s, int fd, uint32_t events, vo
                         log_unit_error_errno(UNIT(a)->id, r, "Failed to remember token: %m");
                         goto fail;
                 }
-                r = manager_add_job(UNIT(a)->manager, JOB_STOP, UNIT_TRIGGER(UNIT(a)), JOB_REPLACE, true, &error, NULL);
+
+                trigger = UNIT_TRIGGER(UNIT(a));
+                if (!trigger) {
+                        log_unit_error(UNIT(a)->id, "Unit to trigger vanished.");
+                        goto fail;
+                }
+                r = manager_add_job(UNIT(a)->manager, JOB_STOP, trigger, JOB_REPLACE, true, &error, NULL);
                 if (r < 0) {
                         log_unit_warning(UNIT(a)->id,
                                          "%s failed to queue umount startup job: %s",
