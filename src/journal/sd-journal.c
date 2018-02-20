@@ -1224,20 +1224,43 @@ static bool file_type_wanted(int flags, const char *filename) {
 
 static int add_any_file(sd_journal *j, const char *path) {
         JournalFile *f = NULL;
+        struct stat st;
         int r, k;
 
         assert(j);
         assert(path);
 
-        if (path) {
-                f = ordered_hashmap_get(j->files, path);
-                if (f) {
-                        /* Mark this file as seen in this generation. This is used to GC old files in
-                         * process_q_overflow() to detect journal files that are still and discern them from those who
-                         * are gone. */
+        if (stat(path, &st) < 0) {
+                r = log_debug_errno(errno, "Failed to stat file '%s': %m", path);
+                return -errno;
+        }
+        if (S_ISDIR(st.st_mode)) {
+                log_debug("Uh, file '%s' is a directory? Refusing.", path);
+                return -EISDIR;
+        }
+        if (!S_ISREG(st.st_mode)) {
+                log_debug("Uh, file '%s' is not a regular file? Refusing.", path);
+                return -EBADFD;
+        }
+
+        f = ordered_hashmap_get(j->files, path);
+        if (f) {
+
+                if (f->last_stat.st_dev == st.st_dev &&
+                    f->last_stat.st_ino == st.st_ino) {
+
+                        /* We already track this file, under the same path and with the same device/inode numbers, it's hence
+                         * really the same. Mark this file as seen in this generation. This is used to GC old files in
+                         * process_q_overflow() to detect journal files that are still and discern them from those who are
+                         * gone. */
                         f->last_seen_generation = j->generation;
                         return 0;
                 }
+
+                /* So we tracked a file under this name, but it has a different inode/device. In that case, it got
+                 * replaced (probably due to rotation?), let's drop it hence from our list. */
+                remove_file_real(j, f);
+                f = NULL;
         }
 
         if (ordered_hashmap_size(j->files) >= JOURNAL_FILES_MAX) {
