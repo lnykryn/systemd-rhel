@@ -421,7 +421,7 @@ static void timer_enter_waiting(Timer *t, bool initial) {
 
                         case TIMER_UNIT_INACTIVE:
 
-                                base = UNIT_TRIGGER(UNIT(t))->inactive_enter_timestamp.monotonic;
+                                base = trigger->inactive_enter_timestamp.monotonic;
 
                                 if (base <= 0)
                                         base = t->last_trigger.monotonic;
