@@ -1373,6 +1373,41 @@ Unit *manager_get_unit(Manager *m, const char *name) {
         return hashmap_get(m->units, name);
 }
 
+static int manager_dispatch_target_deps_queue(Manager *m) {
+        Unit *u;
+        unsigned k;
+        int r = 0;
+
+        static const UnitDependency deps[] = {
+                UNIT_REQUIRED_BY,
+                UNIT_REQUIRED_BY_OVERRIDABLE,
+                UNIT_WANTED_BY,
+                UNIT_BOUND_BY
+        };
+
+        assert(m);
+
+        while ((u = m->target_deps_queue)) {
+                assert(u->in_target_deps_queue);
+
+                LIST_REMOVE(target_deps_queue, u->manager->target_deps_queue, u);
+                u->in_target_deps_queue = false;
+
+                for (k = 0; k < ELEMENTSOF(deps); k++) {
+                        Unit *target;
+                        Iterator i;
+
+                        SET_FOREACH(target, u->dependencies[deps[k]], i) {
+                                r = unit_add_default_target_dependency(u, target);
+                                if (r < 0)
+                                        return r;
+                        }
+                }
+        }
+
+        return r;
+}
+
 unsigned manager_dispatch_load_queue(Manager *m) {
         Unit *u;
         unsigned n = 0;
@@ -1396,6 +1431,11 @@ unsigned manager_dispatch_load_queue(Manager *m) {
         }
 
         m->dispatching_load_queue = false;
+
+        /* Dispatch the units waiting for their target dependencies to be added now, as all targets that we know about
+         * should be loaded and have aliases resolved */
+        (void) manager_dispatch_target_deps_queue(m);
+
         return n;
 }
 
