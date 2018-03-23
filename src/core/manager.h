@@ -114,6 +114,9 @@ struct Manager {
         /* Units that should be realized */
         LIST_HEAD(Unit, cgroup_queue);
 
+        /* Target units whose default target dependencies haven't been set yet */
+        LIST_HEAD(Unit, target_deps_queue);
+
         sd_event *event;
 
         /* We use two hash tables here, since the same PID might be

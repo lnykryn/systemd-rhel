@@ -519,6 +519,9 @@ void unit_free(Unit *u) {
                 u->manager->n_in_gc_queue--;
         }
 
+        if (u->in_target_deps_queue)
+                LIST_REMOVE(target_deps_queue, u->manager->target_deps_queue, u);
+
         if (u->in_cgroup_queue)
                 LIST_REMOVE(cgroup_queue, u->manager->cgroup_queue, u);
 
@@ -1065,6 +1068,18 @@ int unit_load_fragment_and_dropin_optional(Unit *u) {
         return 0;
 }
 
+void unit_add_to_target_deps_queue(Unit *u) {
+        Manager *m = u->manager;
+
+        assert(u);
+
+        if (u->in_target_deps_queue)
+                return;
+
+        LIST_PREPEND(target_deps_queue, m->target_deps_queue, u);
+        u->in_target_deps_queue = true;
+}
+
 int unit_add_default_target_dependency(Unit *u, Unit *target) {
         assert(u);
         assert(target);
@@ -1089,32 +1104,6 @@ int unit_add_default_target_dependency(Unit *u, Unit *target) {
                 return 0;
 
         return unit_add_dependency(target, UNIT_AFTER, u, true);
-}
-
-static int unit_add_target_dependencies(Unit *u) {
-
-        static const UnitDependency deps[] = {
-                UNIT_REQUIRED_BY,
-                UNIT_REQUIRED_BY_OVERRIDABLE,
-                UNIT_WANTED_BY,
-                UNIT_BOUND_BY
-        };
-
-        Unit *target;
-        Iterator i;
-        unsigned k;
-        int r = 0;
-
-        assert(u);
-
-        for (k = 0; k < ELEMENTSOF(deps); k++)
-                SET_FOREACH(target, u->dependencies[deps[k]], i) {
-                        r = unit_add_default_target_dependency(u, target);
-                        if (r < 0)
-                                return r;
-                }
-
-        return r;
 }
 
 static int unit_add_slice_dependencies(Unit *u) {
@@ -1217,10 +1206,7 @@ int unit_load(Unit *u) {
         }
 
         if (u->load_state == UNIT_LOADED) {
-
-                r = unit_add_target_dependencies(u);
-                if (r < 0)
-                        goto fail;
+                unit_add_to_target_deps_queue(u);
 
                 r = unit_add_slice_dependencies(u);
                 if (r < 0)
