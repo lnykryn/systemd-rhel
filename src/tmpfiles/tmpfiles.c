@@ -367,6 +367,7 @@ static int dir_cleanup(
                 struct stat s;
                 usec_t age;
                 _cleanup_free_ char *sub_path = NULL;
+                const char *e;
 
                 if (STR_IN_SET(dent->d_name, ".", ".."))
                         continue;
@@ -399,10 +400,13 @@ static int dir_cleanup(
                         continue;
                 }
 
-                /* Do not delete read-only files owned by root */
-                if (s.st_uid == 0 && !(s.st_mode & S_IWUSR)) {
-                        log_debug("Ignoring \"%s/%s\": read-only and owner by root.", p, dent->d_name);
-                        continue;
+                e = getenv("TMPFILES_AGE_ALL");
+                if (!e) {
+                        /* Do not delete read-only files owned by root */
+                        if (s.st_uid == 0 && !(s.st_mode & S_IWUSR)) {
+                                log_debug("Ignoring \"%s/%s\": read-only and owner by root.", p, dent->d_name);
+                                continue;
+                        }
                 }
 
                 sub_path = strjoin(p, "/", dent->d_name, NULL);
