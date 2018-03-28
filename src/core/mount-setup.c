@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <sys/statfs.h>
+#include <sys/statvfs.h>
 #include <unistd.h>
 #include <ftw.h>
 
@@ -337,6 +339,31 @@ static int nftw_cb(
 
         return FTW_CONTINUE;
 };
+
+static int relabel_cgroup_filesystems(void) {
+        int r;
+        struct statfs st;
+
+        /* Temporarily remount the root cgroup filesystem to give it a proper label. Do this
+           only when the filesystem has been already populated by a previous instance of systemd
+           running from initrd. Otherwise don't remount anything and leave the filesystem read-write
+           for the cgroup filesystems to be mounted inside. */
+        r = statfs("/sys/fs/cgroup", &st);
+        if (r < 0) {
+                return log_error_errno(errno, "Failed to determine mount flags for /sys/fs/cgroup: %m");
+        }
+
+        if (st.f_flags & ST_RDONLY)
+                (void) mount(NULL, "/sys/fs/cgroup", NULL, MS_REMOUNT, NULL);
+
+        (void) label_fix("/sys/fs/cgroup", false, false);
+        nftw("/sys/fs/cgroup", nftw_cb, 64, FTW_MOUNT|FTW_PHYS|FTW_ACTIONRETVAL);
+
+        if (st.f_flags & ST_RDONLY)
+                (void) mount(NULL, "/sys/fs/cgroup", NULL, MS_REMOUNT|MS_RDONLY, NULL);
+
+        return 0;
+}
 #endif
 
 int mount_setup(bool loaded_policy) {
@@ -369,11 +396,9 @@ int mount_setup(bool loaded_policy) {
                 nftw("/dev", nftw_cb, 64, FTW_MOUNT|FTW_PHYS|FTW_ACTIONRETVAL);
                 nftw("/run", nftw_cb, 64, FTW_MOUNT|FTW_PHYS|FTW_ACTIONRETVAL);
 
-                /* Temporarily remount the root cgroup filesystem to give it a proper label. */
-                (void) mount(NULL, "/sys/fs/cgroup", NULL, MS_REMOUNT, NULL);
-                label_fix("/sys/fs/cgroup", false, false);
-                nftw("/sys/fs/cgroup", nftw_cb, 64, FTW_MOUNT|FTW_PHYS|FTW_ACTIONRETVAL);
-                (void) mount(NULL, "/sys/fs/cgroup", NULL, MS_REMOUNT|MS_RDONLY, NULL);
+                r = relabel_cgroup_filesystems();
+                if (r < 0)
+                        return r;
 
                 after_relabel = now(CLOCK_MONOTONIC);
 
