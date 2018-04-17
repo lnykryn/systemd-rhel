@@ -305,6 +305,11 @@ static int dhcp4_address_handler(sd_rtnl *rtnl, sd_rtnl_message *m,
 
         link_set_dhcp_routes(link);
 
+        if (link->dhcp4_messages == 0) {
+                link->dhcp4_configured = true;
+                link_client_handler(link);
+        }
+
         return 1;
 }
 
