@@ -1402,7 +1402,7 @@ int bus_append_unit_property_assignment(sd_bus_message *m, const char *assignmen
 
                 r = sd_bus_message_append(m, "v", "b", r);
 
-        } else if (streq(field, "MemoryLimit")) {
+        } else if (STR_IN_SET(field, "MemoryLimit", "MemorySwapMax")) {
                 off_t bytes;
 
                 r = parse_size(eq, 1024, &bytes);

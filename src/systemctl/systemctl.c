@@ -3280,6 +3280,7 @@ typedef struct UnitStatusInfo {
         /* CGroup */
         uint64_t memory_current;
         uint64_t memory_limit;
+        uint64_t memory_swap_max;
         uint64_t tasks_current;
         uint64_t tasks_max;
 
@@ -3555,9 +3556,13 @@ static void print_status_info(
 
                 printf("   Memory: %s", format_bytes(buf, sizeof(buf), i->memory_current));
 
-                if (i->memory_limit != (uint64_t) -1)
-                        printf(" (limit: %s)\n", format_bytes(buf, sizeof(buf), i->memory_limit));
-                else
+                if (i->memory_limit != (uint64_t) -1) {
+                        printf(" (limit: %s", format_bytes(buf, sizeof(buf), i->memory_limit));
+                        if (i->memory_swap_max != (uint64_t) -1) {
+                                printf(", swap max: %s", format_bytes(buf, sizeof(buf), i->memory_swap_max));
+                        }
+                        printf(")\n");
+                } else
                         printf("\n");
         }
 
@@ -3779,6 +3784,8 @@ static int status_property(const char *name, sd_bus_message *m, UnitStatusInfo *
                         i->memory_current = u;
                 else if (streq(name, "MemoryLimit"))
                         i->memory_limit = u;
+                else if (streq(name, "MemorySwapMax"))
+                        i->memory_swap_max = u;
                 else if (streq(name, "TasksCurrent"))
                         i->tasks_current = u;
                 else if (streq(name, "TasksMax"))
@@ -4263,6 +4270,7 @@ static int show_one(
         UnitStatusInfo info = {
                 .memory_current = (uint64_t) -1,
                 .memory_limit = (uint64_t) -1,
+                .memory_swap_max = (uint64_t) -1,
                 .tasks_current = (uint64_t) -1,
                 .tasks_max = (uint64_t) -1,
         };

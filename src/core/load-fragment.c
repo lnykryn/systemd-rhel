@@ -3026,19 +3026,30 @@ int config_parse_memory_limit(
         int r;
 
         if (isempty(rvalue) || streq(rvalue, "infinity")) {
-                c->memory_limit = (uint64_t) -1;
+                if (streq(lvalue, "MemoryLimit"))
+                        c->memory_limit = (uint64_t) -1;
+                else if (streq(lvalue, "MemorySwapMax"))
+                        c->memory_swap_max = (uint64_t) -1;
+                else
+                        return -EINVAL;
                 return 0;
         }
 
         assert_cc(sizeof(uint64_t) == sizeof(off_t));
 
         r = parse_size(rvalue, 1024, &bytes);
-        if (r < 0 || bytes < 1) {
+        if (r < 0 || (bytes < 1 && !streq(lvalue, "MemorySwapMax"))) {
                 log_syntax(unit, LOG_ERR, filename, line, EINVAL, "Memory limit '%s' invalid. Ignoring.", rvalue);
                 return 0;
         }
 
-        c->memory_limit = (uint64_t) bytes;
+        if (streq(lvalue, "MemoryLimit"))
+                c->memory_limit = (uint64_t) bytes;
+        else if (streq(lvalue, "MemorySwapMax"))
+                c->memory_swap_max = (uint64_t) bytes;
+        else
+                return -EINVAL;
+
         return 0;
 }
 
