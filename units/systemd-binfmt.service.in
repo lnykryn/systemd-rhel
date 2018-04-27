@@ -8,7 +8,7 @@
 [Unit]
 Description=Set Up Additional Binary Formats
 Documentation=man:systemd-binfmt.service(8) man:binfmt.d(5)
-Documentation=https://www.kernel.org/doc/Documentation/binfmt_misc.txt
+Documentation=https://www.kernel.org/doc/Documentation/admin-guide/binfmt-misc.rst
 DefaultDependencies=no
 Conflicts=shutdown.target
 After=systemd-readahead-collect.service systemd-readahead-replay.service proc-sys-fs-binfmt_misc.automount
