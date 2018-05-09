@@ -1064,7 +1064,7 @@ static int method_unsubscribe(sd_bus *bus, sd_bus_message *message, void *userda
         return sd_bus_reply_method_return(message, NULL);
 }
 
-static int method_dump(sd_bus *bus, sd_bus_message *message, void *userdata, sd_bus_error *error) {
+static int dump_impl(sd_bus *bus, sd_bus_message *message, void *userdata, sd_bus_error *error, int (*reply)(sd_bus_message *, char *)) {
         _cleanup_free_ char *dump = NULL;
         _cleanup_fclose_ FILE *f = NULL;
         Manager *m = userdata;
@@ -1089,11 +1089,32 @@ static int method_dump(sd_bus *bus, sd_bus_message *message, void *userdata, sd_
         manager_dump_jobs(m, f, NULL);
 
         fflush(f);
-
         if (ferror(f))
                 return -ENOMEM;
 
+        return reply(message, dump);
+}
+
+static int reply_dump(sd_bus_message *message, char *dump) {
         return sd_bus_reply_method_return(message, "s", dump);
+}
+
+static int method_dump(sd_bus *bus, sd_bus_message *message, void *userdata, sd_bus_error *error) {
+        return dump_impl(bus, message, userdata, error, reply_dump);
+}
+
+static int reply_dump_by_fd(sd_bus_message *message, char *dump) {
+        _cleanup_close_ int fd = -1;
+
+        fd = acquire_data_fd(dump, strlen(dump), 0);
+        if (fd < 0)
+                return fd;
+
+        return sd_bus_reply_method_return(message, "h", fd);
+}
+
+static int method_dump_by_fd(sd_bus *bus, sd_bus_message *message, void *userdata, sd_bus_error *error) {
+        return dump_impl(bus, message, userdata, error, reply_dump_by_fd);
 }
 
 static int method_create_snapshot(sd_bus *bus, sd_bus_message *message, void *userdata, sd_bus_error *error) {
@@ -2092,6 +2113,7 @@ const sd_bus_vtable bus_manager_vtable[] = {
         SD_BUS_METHOD("Subscribe", NULL, NULL, method_subscribe, SD_BUS_VTABLE_UNPRIVILEGED),
         SD_BUS_METHOD("Unsubscribe", NULL, NULL, method_unsubscribe, SD_BUS_VTABLE_UNPRIVILEGED),
         SD_BUS_METHOD("Dump", NULL, "s", method_dump, SD_BUS_VTABLE_UNPRIVILEGED),
+        SD_BUS_METHOD("DumpByFileDescriptor", NULL, "h", method_dump_by_fd, SD_BUS_VTABLE_UNPRIVILEGED),
         SD_BUS_METHOD("CreateSnapshot", "sb", "o", method_create_snapshot, 0),
         SD_BUS_METHOD("RemoveSnapshot", "s", NULL, method_remove_snapshot, 0),
         SD_BUS_METHOD("Reload", NULL, NULL, method_reload, SD_BUS_VTABLE_UNPRIVILEGED),
