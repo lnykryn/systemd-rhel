@@ -29,6 +29,7 @@
 #include "sd-bus.h"
 #include "bus-util.h"
 #include "bus-error.h"
+#include "copy.h"
 #include "install.h"
 #include "log.h"
 #include "build.h"
@@ -1096,30 +1097,25 @@ static int dot(sd_bus *bus, char* patterns[]) {
         return 0;
 }
 
-static int dump(sd_bus *bus, char **args) {
-        _cleanup_bus_message_unref_ sd_bus_message *reply = NULL;
-        _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
+static int dump_fallback(sd_bus *bus) {
+        _cleanup_(sd_bus_error_free) sd_bus_error error = SD_BUS_ERROR_NULL;
+        _cleanup_(sd_bus_message_unrefp) sd_bus_message *reply = NULL;
         const char *text = NULL;
         int r;
 
-        if (!strv_isempty(args)) {
-                log_error("Too many arguments.");
-                return -E2BIG;
-        }
-
-        pager_open_if_enabled();
+        assert(bus);
 
         r = sd_bus_call_method(
                         bus,
-                       "org.freedesktop.systemd1",
-                       "/org/freedesktop/systemd1",
-                       "org.freedesktop.systemd1.Manager",
-                       "Dump",
-                       &error,
-                       &reply,
-                       "");
+                        "org.freedesktop.systemd1",
+                        "/org/freedesktop/systemd1",
+                        "org.freedesktop.systemd1.Manager",
+                        "Dump",
+                        &error,
+                        &reply,
+                        "");
         if (r < 0) {
-                log_error("Failed issue method call: %s", bus_error_message(&error, -r));
+                log_error("Failed to issue method call Dump: %s", bus_error_message(&error, -r));
                 return r;
         }
 
@@ -1129,6 +1125,49 @@ static int dump(sd_bus *bus, char **args) {
 
         fputs(text, stdout);
         return 0;
+}
+
+static int dump(sd_bus *bus, char **args) {
+        _cleanup_(sd_bus_error_free) sd_bus_error error = SD_BUS_ERROR_NULL;
+        _cleanup_(sd_bus_message_unrefp) sd_bus_message *reply = NULL;
+        int fd = -1;
+        int r;
+
+        if (!strv_isempty(args)) {
+                log_error("Too many arguments.");
+                return -E2BIG;
+        }
+
+        pager_open_if_enabled();
+
+        if (!sd_bus_can_send(bus, SD_BUS_TYPE_UNIX_FD))
+                return dump_fallback(bus);
+
+        r = sd_bus_call_method(
+                        bus,
+                       "org.freedesktop.systemd1",
+                       "/org/freedesktop/systemd1",
+                       "org.freedesktop.systemd1.Manager",
+                       "DumpByFileDescriptor",
+                       &error,
+                       &reply,
+                       "");
+        if (r < 0) {
+                /* fall back to Dump if DumpByFileDescriptor is not supported */
+                if (!IN_SET(r, -EACCES, -EBADR)) {
+                        log_error("Failed to issue method call DumpByFileDescriptor: %s", bus_error_message(&error, -r));
+                        return r;
+                }
+
+                return dump_fallback(bus);
+        }
+
+        r = sd_bus_message_read(reply, "h", &fd);
+        if (r < 0)
+                return bus_log_parse_error(r);
+
+        fflush(stdout);
+        return copy_bytes(fd, STDOUT_FILENO, (uint64_t) -1, 0);
 }
 
 static int set_log_level(sd_bus *bus, char **args) {
