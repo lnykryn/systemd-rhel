@@ -43,6 +43,7 @@
 #include <mntent.h>
 #include <sys/socket.h>
 #include <sys/inotify.h>
+#include <glob.h>
 
 #if SIZEOF_PID_T == 4
 #  define PID_PRI PRIi32
@@ -594,6 +595,7 @@ char* gid_to_name(gid_t gid);
 
 int glob_exists(const char *path);
 int glob_extend(char ***strv, const char *path);
+int safe_glob(const char *path, int flags, glob_t *pglob);
 
 int dirent_ensure_type(DIR *d, struct dirent *de);
 
