@@ -49,7 +49,6 @@
 #include <dlfcn.h>
 #include <sys/wait.h>
 #include <sys/time.h>
-#include <glob.h>
 #include <grp.h>
 #include <sys/mman.h>
 #include <sys/vfs.h>
@@ -3370,7 +3369,7 @@ static int rm_rf_internal(const char *path, bool only_dirs, bool delete_root, bo
         /* We refuse to clean the root file system with this
          * call. This is extra paranoia to never cause a really
          * seriously broken system. */
-        if (path_equal(path, "/")) {
+        if (path_equal_or_files_same(path, "/")) {
                 log_error("Attempted to remove entire root file system, and we can't allow that.");
                 return -EPERM;
         }
@@ -5094,6 +5093,66 @@ int in_group(const char *name) {
                 return r;
 
         return in_gid(gid);
+}
+
+static void closedir_wrapper(void* v) {
+        (void) closedir(v);
+}
+
+static bool dot_or_dot_dot(const char *path) {
+        if (!path)
+                return false;
+        if (path[0] != '.')
+                return false;
+        if (path[1] == 0)
+                return true;
+        if (path[1] != '.')
+                return false;
+
+        return path[2] == 0;
+}
+
+static struct dirent* readdir_no_dot(DIR *dirp) {
+        struct dirent* d;
+
+        for (;;) {
+                d = readdir(dirp);
+                if (d && dot_or_dot_dot(d->d_name))
+                        continue;
+                return d;
+        }
+}
+
+int safe_glob(const char *path, int flags, glob_t *pglob) {
+        int k;
+
+        /* We want to set GLOB_ALTDIRFUNC ourselves, don't allow it to be set. */
+        assert(!(flags & GLOB_ALTDIRFUNC));
+
+        if (!pglob->gl_closedir)
+                pglob->gl_closedir = closedir_wrapper;
+        if (!pglob->gl_readdir)
+                pglob->gl_readdir = (struct dirent *(*)(void *)) readdir_no_dot;
+        if (!pglob->gl_opendir)
+                pglob->gl_opendir = (void *(*)(const char *)) opendir;
+        if (!pglob->gl_lstat)
+                pglob->gl_lstat = lstat;
+        if (!pglob->gl_stat)
+                pglob->gl_stat = stat;
+
+        errno = 0;
+        k = glob(path, flags | GLOB_ALTDIRFUNC, NULL, pglob);
+
+        if (k == GLOB_NOMATCH)
+                return -ENOENT;
+        if (k == GLOB_NOSPACE)
+                return -ENOMEM;
+        if (k != 0)
+                return errno > 0 ? -errno : -EIO;
+        if (strv_isempty(pglob->gl_pathv))
+                return -ENOENT;
+
+        return 0;
 }
 
 int glob_exists(const char *path) {
