@@ -109,7 +109,7 @@ static void forward_syslog_iovec(Server *s, const struct iovec *iovec, unsigned 
                 log_debug_errno(errno, "Failed to forward syslog message: %m");
 }
 
-static void forward_syslog_raw(Server *s, int priority, const char *buffer, const struct ucred *ucred, const struct timeval *tv) {
+static void forward_syslog_raw(Server *s, int priority, const char *buffer, size_t buffer_len, const struct ucred *ucred, const struct timeval *tv) {
         struct iovec iovec;
 
         assert(s);
@@ -118,7 +118,9 @@ static void forward_syslog_raw(Server *s, int priority, const char *buffer, cons
         if (LOG_PRI(priority) > s->max_level_syslog)
                 return;
 
-        IOVEC_SET_STRING(iovec, buffer);
+        iovec.iov_base = (char *) buffer;
+        iovec.iov_len = buffer_len;
+
         forward_syslog_iovec(s, &iovec, 1, ucred, tv);
 }
 
@@ -311,40 +313,49 @@ static void syslog_skip_date(char **buf) {
 void server_process_syslog_message(
         Server *s,
         const char *buf,
+        size_t buf_len,
         const struct ucred *ucred,
         const struct timeval *tv,
         const char *label,
         size_t label_len) {
 
         char syslog_priority[sizeof("PRIORITY=") + DECIMAL_STR_MAX(int)],
-             syslog_facility[sizeof("SYSLOG_FACILITY=") + DECIMAL_STR_MAX(int)];
+             syslog_facility[sizeof("SYSLOG_FACILITY=") + DECIMAL_STR_MAX(int)], *msg;
         const char *message = NULL, *syslog_identifier = NULL, *syslog_pid = NULL;
         struct iovec iovec[N_IOVEC_META_FIELDS + 6];
-        unsigned n = 0;
+        unsigned n = 0, i;
         int priority = LOG_USER | LOG_INFO;
         _cleanup_free_ char *identifier = NULL, *pid = NULL;
-        const char *orig;
 
         assert(s);
         assert(buf);
 
-        orig = buf;
-        syslog_parse_priority(&buf, &priority, true);
+        /* We are creating copy of the message because we want to forward original message verbatim to the legacy
+           syslog implementation */
+        for (i = buf_len; i > 0; i--)
+                if (!strchr(WHITESPACE, buf[i-1]))
+                        break;
+
+        msg = newa(char, i + 1);
+        *((char *) mempcpy(msg, buf, i)) = 0;
+        msg += strspn(msg, WHITESPACE);
+
+        syslog_parse_priority((const char **)&msg, &priority, true);
 
         if (s->forward_to_syslog)
-                forward_syslog_raw(s, priority, orig, ucred, tv);
+                forward_syslog_raw(s, priority, buf, buf_len, ucred, tv);
 
-        syslog_skip_date((char**) &buf);
-        syslog_parse_identifier(&buf, &identifier, &pid);
+        syslog_skip_date(&msg);
+        syslog_parse_identifier((const char**)&msg, &identifier, &pid);
 
         if (s->forward_to_kmsg)
-                server_forward_kmsg(s, priority, identifier, buf, ucred);
+                server_forward_kmsg(s, priority, identifier, msg, ucred);
 
         if (s->forward_to_console)
-                server_forward_console(s, priority, identifier, buf, ucred);
+                server_forward_console(s, priority, identifier, msg, ucred);
 
         if (s->forward_to_wall)
-                server_forward_wall(s, priority, identifier, buf, ucred);
+                server_forward_wall(s, priority, identifier, msg, ucred);
 
         IOVEC_SET_STRING(iovec[n++], "_TRANSPORT=syslog");
 
@@ -368,7 +379,7 @@ void server_process_syslog_message(
                         IOVEC_SET_STRING(iovec[n++], syslog_pid);
         }
 
-        message = strjoina("MESSAGE=", buf);
+        message = strjoina("MESSAGE=", msg);
         if (message)
                 IOVEC_SET_STRING(iovec[n++], message);
 
