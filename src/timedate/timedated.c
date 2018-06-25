@@ -542,9 +542,9 @@ static int method_set_local_rtc(sd_bus *bus, sd_bus_message *m, void *userdata, 
                  * initialize the timezone fields of
                  * struct tm. */
                 if (c->local_rtc)
-                        tm = *localtime(&ts.tv_sec);
+                        localtime_r(&ts.tv_sec, &tm);
                 else
-                        tm = *gmtime(&ts.tv_sec);
+                        gmtime_r(&ts.tv_sec, &tm);
 
                 /* Override the main fields of
                  * struct tm, but not the timezone
@@ -562,15 +562,15 @@ static int method_set_local_rtc(sd_bus *bus, sd_bus_message *m, void *userdata, 
                 }
 
         } else {
-                struct tm *tm;
+                struct tm tm;
 
                 /* Sync RTC from system clock */
                 if (c->local_rtc)
-                        tm = localtime(&ts.tv_sec);
+                        localtime_r(&ts.tv_sec, &tm);
                 else
-                        tm = gmtime(&ts.tv_sec);
+                        gmtime_r(&ts.tv_sec, &tm);
 
-                clock_set_hwclock(tm);
+                clock_set_hwclock(&tm);
         }
 
         log_info("RTC configured to %s time.", c->local_rtc ? "local" : "UTC");
@@ -585,7 +585,7 @@ static int method_set_time(sd_bus *bus, sd_bus_message *m, void *userdata, sd_bu
         Context *c = userdata;
         int64_t utc;
         struct timespec ts;
-        struct tm* tm;
+        struct tm tm;
         int r;
 
         assert(bus);
@@ -633,10 +633,10 @@ static int method_set_time(sd_bus *bus, sd_bus_message *m, void *userdata, sd_bu
 
         /* Sync down to RTC */
         if (c->local_rtc)
-                tm = localtime(&ts.tv_sec);
+                localtime_r(&ts.tv_sec, &tm);
         else
-                tm = gmtime(&ts.tv_sec);
-        clock_set_hwclock(tm);
+                gmtime_r(&ts.tv_sec, &tm);
+        clock_set_hwclock(&tm);
 
         log_struct(LOG_INFO,
                    LOG_MESSAGE_ID(SD_MESSAGE_TIME_CHANGE),
