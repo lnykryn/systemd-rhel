@@ -378,7 +378,7 @@ char *bus_address_escape(const char *v);
 
 #define OBJECT_PATH_FOREACH_PREFIX(prefix, path)                        \
         for (char *_slash = ({ strcpy((prefix), (path)); streq((prefix), "/") ? NULL : strrchr((prefix), '/'); }) ; \
-             _slash && !(_slash[(_slash) == (prefix)] = 0);             \
+             _slash && ((_slash[(_slash) == (prefix)] = 0), true);       \
              _slash = streq((prefix), "/") ? NULL : strrchr((prefix), '/'))
 
 /* If we are invoking callbacks of a bus object, ensure unreffing the
