@@ -788,14 +788,11 @@ static int list_dependencies_one(sd_bus *bus, const char *name, unsigned int lev
                 if (times
                     && times->activated
                     && times->activated <= boot->finish_time
-                    && (times->activated >= service_longest
-                        || service_longest == 0)) {
+                    && times->activated >= service_longest)
                         service_longest = times->activated;
-                        break;
-                }
         }
 
-        if (service_longest == 0 )
+        if (service_longest == 0)
                 return r;
 
         STRV_FOREACH(c, deps) {
