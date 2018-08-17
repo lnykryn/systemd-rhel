@@ -3524,7 +3524,6 @@ dist_udevrules_DATA += \
 	rules/40-redhat.rules \
 	rules/40-redhat-disable-lenovo-ir-camera.rules \
 	rules/40-redhat-disable-dell-ir-camera.rules \
-	rules/40-redhat-hotunplug.rules \
 	rules/73-idrac.rules \
         rules/80-net-name-slot.rules
 
