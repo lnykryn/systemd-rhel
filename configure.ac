@@ -832,6 +832,12 @@ if test "x$enable_libcryptsetup" != "xno"; then
         if test "x$have_libcryptsetup" = xno -a "x$enable_libcryptsetup" = xyes; then
                 AC_MSG_ERROR([*** libcryptsetup support requested but libraries not found])
         fi
+        AC_CHECK_MEMBER(
+                [struct crypt_params_plain.sector_size],
+                [AC_DEFINE([HAVE_LIBCRYPTSETUP_SECTOR_SIZE], [1], [Define if libcryptsetup supports sector_size param])],
+                [],
+                [#include <libcryptsetup.h>]
+        )
 fi
 AM_CONDITIONAL(HAVE_LIBCRYPTSETUP, [test "$have_libcryptsetup" = "yes"])
 
