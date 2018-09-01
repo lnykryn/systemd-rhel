@@ -50,7 +50,9 @@
 static const char *arg_type = NULL; /* ANY_LUKS, CRYPT_LUKS1, CRYPT_LUKS2, CRYPT_TCRYPT or CRYPT_PLAIN */
 static char *arg_cipher = NULL;
 static unsigned arg_key_size = 0;
+#if HAVE_LIBCRYPTSETUP_SECTOR_SIZE
 static unsigned arg_sector_size = CRYPT_SECTOR_SIZE;
+#endif
 static int arg_key_slot = CRYPT_ANY_SLOT;
 static unsigned arg_keyfile_size = 0;
 static unsigned arg_keyfile_offset = 0;
