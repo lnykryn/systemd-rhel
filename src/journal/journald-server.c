@@ -1180,7 +1180,8 @@ int server_flush_to_var(Server *s, bool require_flag_file) {
         }
 
 finish:
-        journal_file_post_change(s->system_journal);
+        if (s->system_journal)
+                journal_file_post_change(s->system_journal);
 
         journal_file_close(s->runtime_journal);
         s->runtime_journal = NULL;
