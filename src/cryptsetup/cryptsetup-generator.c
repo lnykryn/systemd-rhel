@@ -421,27 +421,36 @@ static int parse_proc_cmdline_item(const char *key, const char *value) {
                         return log_oom();
 
         } else if (STR_IN_SET(key, "luks.key", "rd.luks.key") && value) {
+                int n;
 
-                r = sscanf(value, "%m[0-9a-fA-F-]=%ms", &uuid, &uuid_value);
-                if (r == 2) {
+                r = sscanf(value, "%m[0-9a-fA-F-]=%n", &uuid, &n);
+                if (r == 1) {
                         char *c;
+                        const char *keyspec;
                         _cleanup_free_ char *keyfile = NULL, *keydev = NULL;
 
                         d = get_crypto_device(uuid);
                         if (!d)
                                 return log_oom();
 
-                        c = strrchr(uuid_value, ':');
+                        keyspec = value + n;
+
+                        c = strrchr(keyspec, ':');
                         if (!c) {
+                                /* No keydev specified */
+                                keyfile = strdup(keyspec);
+                                if (!keyfile)
+                                        return log_oom();
+
                                 free(d->keyfile);
-                                d->keyfile = uuid_value;
-                                uuid_value = NULL;
+                                d->keyfile = keyfile;
+                                keyfile = NULL;
 
                                 return 0;
                         }
 
                         *c = '\0';
-                        keyfile = strdup(uuid_value);
+                        keyfile = strdup(keyspec);
                         keydev = strdup(++c);
 
                         if (!keyfile || !keydev)
