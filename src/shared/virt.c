@@ -185,7 +185,8 @@ static int detect_vm_dmi(const char **_id) {
 
 /* Returns a short identifier for the various VM implementations */
 int detect_vm(const char **id) {
-        _cleanup_free_ char *domcap = NULL, *cpuinfo_contents = NULL;
+        _cleanup_free_ char *domcap = NULL;
+        _cleanup_fclose_ FILE *f = NULL;
         static thread_local int cached_found = -1;
         static thread_local const char *cached_id = NULL;
         const char *_id = NULL;
@@ -252,13 +253,36 @@ int detect_vm(const char **id) {
         }
 
         /* Detect User-Mode Linux by reading /proc/cpuinfo */
-        r = read_full_file("/proc/cpuinfo", &cpuinfo_contents, NULL);
-        if (r < 0)
-                return r;
-        if (strstr(cpuinfo_contents, "\nvendor_id\t: User Mode Linux\n")) {
-                _id = "uml";
-                r = 1;
-                goto finish;
+        f = fopen("/proc/cpuinfo", "re");
+        if (!f) {
+                if (errno == ENOENT) {
+                        log_debug("/proc/cpuinfo not found, assuming no UML virtualization.");
+                        r = 0;
+                        goto finish;
+                }
+                return -errno;
+        }
+        for (;;) {
+                _cleanup_free_ char *line = NULL;
+                const char *t;
+
+                r = read_line(f, LONG_LINE_MAX, &line);
+                if (r < 0)
+                        return r;
+                if (r == 0)
+                        break;
+
+                t = startswith(line, "vendor_id\t: ");
+                if (t) {
+                        if (startswith(t, "User Mode Linux")) {
+                                log_debug("UML virtualization found in /proc/cpuinfo");
+                                _id = "uml";
+                                r = 1;
+                                goto finish;
+                        }
+
+                        break;
+                }
         }
 
 #if defined(__s390__)
