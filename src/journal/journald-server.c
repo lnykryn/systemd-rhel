@@ -557,6 +557,8 @@ static void do_vacuum(
                 const char* path,
                 JournalMetrics *metrics) {
 
+        uint64_t total, limit = metrics->max_use;
+        struct statvfs st;
         const char *p;
         int r;
 
@@ -564,7 +566,18 @@ static void do_vacuum(
                 return;
 
         p = strjoina(path, id);
-        r = journal_directory_vacuum(p, metrics->max_use, s->max_retention_usec, &s->oldest_file_usec, false);
+
+        r = statvfs(p, &st);
+        if (r < 0) {
+                log_error_errno(r, "Failed to statvfs: %s", p);
+                return;
+        }
+
+        total = st.f_bsize * st.f_blocks;
+        if (total - metrics->keep_free < limit)
+                limit = total - metrics->keep_free;
+
+        r = journal_directory_vacuum(p, limit, s->max_retention_usec, &s->oldest_file_usec, false);
         if (r < 0 && r != -ENOENT)
                 log_error_errno(r, "Failed to vacuum %s: %m", p);
 }
