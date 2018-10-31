@@ -123,7 +123,7 @@ static int slice_load_root_slice(Unit *u) {
         if (!u->description)
                 u->description = strdup("Root Slice");
         if (!u->documentation)
-                u->documentation = strv_new("man:systemd.special(7)", NULL);
+                u->documentation = strv_new("man:systemd.special(7)");
 
         return 1;
 }
@@ -146,7 +146,7 @@ static int slice_load_system_slice(Unit *u) {
         if (!u->description)
                 u->description = strdup("System Slice");
         if (!u->documentation)
-                u->documentation = strv_new("man:systemd.special(7)", NULL);
+                u->documentation = strv_new("man:systemd.special(7)");
 
         return 1;
 }

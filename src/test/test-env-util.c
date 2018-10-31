@@ -12,13 +12,13 @@
 static void test_strv_env_delete(void) {
         _cleanup_strv_free_ char **a = NULL, **b = NULL, **c = NULL, **d = NULL;
 
-        a = strv_new("FOO=BAR", "WALDO=WALDO", "WALDO=", "PIEP", "SCHLUMPF=SMURF", NULL);
+        a = strv_new("FOO=BAR", "WALDO=WALDO", "WALDO=", "PIEP", "SCHLUMPF=SMURF");
         assert_se(a);
 
-        b = strv_new("PIEP", "FOO", NULL);
+        b = strv_new("PIEP", "FOO");
         assert_se(b);
 
-        c = strv_new("SCHLUMPF", NULL);
+        c = strv_new("SCHLUMPF");
         assert_se(c);
 
         d = strv_env_delete(a, 2, b, c);
@@ -42,7 +42,7 @@ static void test_strv_env_get(void) {
 static void test_strv_env_unset(void) {
         _cleanup_strv_free_ char **l = NULL;
 
-        l = strv_new("PIEP", "SCHLUMPF=SMURFF", "NANANANA=YES", NULL);
+        l = strv_new("PIEP", "SCHLUMPF=SMURFF", "NANANANA=YES");
         assert_se(l);
 
         assert_se(strv_env_unset(l, "SCHLUMPF") == l);
@@ -55,7 +55,7 @@ static void test_strv_env_unset(void) {
 static void test_strv_env_set(void) {
         _cleanup_strv_free_ char **l = NULL, **r = NULL;
 
-        l = strv_new("PIEP", "SCHLUMPF=SMURFF", "NANANANA=YES", NULL);
+        l = strv_new("PIEP", "SCHLUMPF=SMURFF", "NANANANA=YES");
         assert_se(l);
 
         r = strv_env_set(l, "WALDO=WALDO");
@@ -71,10 +71,10 @@ static void test_strv_env_set(void) {
 static void test_strv_env_merge(void) {
         _cleanup_strv_free_ char **a = NULL, **b = NULL, **r = NULL;
 
-        a = strv_new("FOO=BAR", "WALDO=WALDO", "WALDO=", "PIEP", "SCHLUMPF=SMURF", NULL);
+        a = strv_new("FOO=BAR", "WALDO=WALDO", "WALDO=", "PIEP", "SCHLUMPF=SMURF");
         assert_se(a);
 
-        b = strv_new("FOO=KKK", "FOO=", "PIEP=", "SCHLUMPF=SMURFF", "NANANANA=YES", NULL);
+        b = strv_new("FOO=KKK", "FOO=", "PIEP=", "SCHLUMPF=SMURFF", "NANANANA=YES");
         assert_se(b);
 
         r = strv_env_merge(2, a, b);
@@ -247,8 +247,7 @@ static void test_env_clean(void) {
                      "xyz\n=xyz",
                      "xyz=xyz\n",
                      "another=one",
-                     "another=final one",
-                     NULL);
+                     "another=final one");
         assert_se(e);
         assert_se(!strv_env_is_valid(e));
         assert_se(strv_env_clean(e) == e);

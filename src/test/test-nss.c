@@ -428,7 +428,7 @@ static int parse_argv(int argc, char **argv,
         size_t n_allocated = 0;
 
         if (argc > 1)
-                modules = strv_new(argv[1], NULL);
+                modules = strv_new(argv[1]);
         else
                 modules = strv_new(
 #if ENABLE_MYHOSTNAME
@@ -440,8 +440,7 @@ static int parse_argv(int argc, char **argv,
 #if ENABLE_MACHINED
                                 "mymachines",
 #endif
-                                "dns",
-                                NULL);
+                                "dns");
         if (!modules)
                 return -ENOMEM;
 
@@ -472,7 +471,7 @@ static int parse_argv(int argc, char **argv,
                 if (!hostname)
                         return -ENOMEM;
 
-                names = strv_new("localhost", "_gateway", "foo_no_such_host", hostname, NULL);
+                names = strv_new("localhost", "_gateway", "foo_no_such_host", hostname);
                 if (!names)
                         return -ENOMEM;
 

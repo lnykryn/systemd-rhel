@@ -1217,7 +1217,7 @@ int get_timezones(char ***ret) {
 
         assert(ret);
 
-        zones = strv_new("UTC", NULL);
+        zones = strv_new("UTC");
         if (!zones)
                 return -ENOMEM;
 

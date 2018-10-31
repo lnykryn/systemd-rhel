@@ -1203,7 +1203,7 @@ static int service_collect_fds(Service *s,
                         return -ENOMEM;
                 rfds[0] = s->socket_fd;
 
-                rfd_names = strv_new("connection", NULL);
+                rfd_names = strv_new("connection");
                 if (!rfd_names)
                         return -ENOMEM;
 

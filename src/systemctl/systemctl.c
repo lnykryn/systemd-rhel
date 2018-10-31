@@ -3055,7 +3055,7 @@ static int start_unit(int argc, char *argv[], void *userdata) {
         }
 
         if (one_name)
-                names = strv_new(one_name, NULL);
+                names = strv_new(one_name);
         else {
                 r = expand_names(bus, strv_skip(argv, 1), suffix, &names);
                 if (r < 0)

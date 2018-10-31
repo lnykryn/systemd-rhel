@@ -2429,7 +2429,7 @@ int unit_file_add_dependency(
                         l = &i->required_by;
 
                 strv_free(*l);
-                *l = strv_new(target_info->name, NULL);
+                *l = strv_new(target_info->name);
                 if (!*l)
                         return -ENOMEM;
         }
