@@ -38,6 +38,7 @@
 #include "async.h"
 #include "virt.h"
 #include "dbus.h"
+#include "fileio.h"
 
 Job* job_new_raw(Unit *unit) {
         Job *j;
@@ -1035,23 +1036,25 @@ int job_serialize(Job *j, FILE *f, FDSet *fds) {
 }
 
 int job_deserialize(Job *j, FILE *f, FDSet *fds) {
+        int r = 0;
+
         assert(j);
 
         for (;;) {
-                char line[LINE_MAX], *l, *v;
+                _cleanup_free_ char *line = NULL;
+                char *l, *v;
                 size_t k;
 
-                if (!fgets(line, sizeof(line), f)) {
-                        if (feof(f))
-                                return 0;
-                        return -errno;
-                }
+                r = read_line(f, LONG_LINE_MAX, &line);
+                if (r < 0)
+                        return log_error_errno(r, "Failed to read serialization line: %m");
+                if (r == 0)
+                        return 0;
 
-                char_array_0(line);
                 l = strstrip(line);
 
                 /* End marker */
-                if (l[0] == 0)
+                if (isempty(l))
                         return 0;
 
                 k = strcspn(l, "=");
