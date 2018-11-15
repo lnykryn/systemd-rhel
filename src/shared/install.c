@@ -1878,7 +1878,7 @@ int unit_file_enable(
                 return r;
 
         STRV_FOREACH(f, files) {
-                r = install_info_discover(scope, &c, root_dir, &paths, *f, SEARCH_LOAD, &i);
+                r = install_info_discover(scope, &c, root_dir, &paths, *f, SEARCH_LOAD|SEARCH_FOLLOW_CONFIG_SYMLINKS, &i);
                 if (r < 0)
                         return r;
                 if (i->type == UNIT_FILE_TYPE_MASKED)
