@@ -523,6 +523,8 @@ int automount_update_mount(Automount *a, MountState old_state, MountState state)
                 if (old_state != state)
                         automount_send_ready(a, a->tokens, -ENODEV);
                 (void) sd_event_source_set_enabled(a->expire_event_source, SD_EVENT_OFF);
+                if (a->state == AUTOMOUNT_RUNNING)
+                        automount_set_state(a, AUTOMOUNT_WAITING);
                 break;
         default:
                 break;
