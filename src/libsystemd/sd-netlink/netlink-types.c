@@ -260,6 +260,7 @@ static  const NLType rtnl_link_info_data_ipgre_types[] = {
         [IFLA_GRE_ENCAP_FLAGS]  = { .type = NETLINK_TYPE_U16 },
         [IFLA_GRE_ENCAP_SPORT]  = { .type = NETLINK_TYPE_U16 },
         [IFLA_GRE_ENCAP_DPORT]  = { .type = NETLINK_TYPE_U16 },
+        [IFLA_GRE_ERSPAN_INDEX] = { .type = NETLINK_TYPE_U32 },
 };
 
 static const NLType rtnl_link_info_data_ipvti_types[] = {
@@ -316,6 +317,7 @@ static const char* const nl_union_link_info_data_table[] = {
         [NL_UNION_LINK_INFO_DATA_VXLAN] = "vxlan",
         [NL_UNION_LINK_INFO_DATA_IPIP_TUNNEL] = "ipip",
         [NL_UNION_LINK_INFO_DATA_IPGRE_TUNNEL] = "gre",
+        [NL_UNION_LINK_INFO_DATA_ERSPAN] = "erspan",
         [NL_UNION_LINK_INFO_DATA_IPGRETAP_TUNNEL] = "gretap",
         [NL_UNION_LINK_INFO_DATA_IP6GRE_TUNNEL] = "ip6gre",
         [NL_UNION_LINK_INFO_DATA_IP6GRETAP_TUNNEL] = "ip6gretap",
@@ -354,6 +356,8 @@ static const NLTypeSystem rtnl_link_info_data_type_systems[] = {
         [NL_UNION_LINK_INFO_DATA_IPIP_TUNNEL] =      { .count = ELEMENTSOF(rtnl_link_info_data_iptun_types),
                                                        .types = rtnl_link_info_data_iptun_types },
         [NL_UNION_LINK_INFO_DATA_IPGRE_TUNNEL] =     { .count = ELEMENTSOF(rtnl_link_info_data_ipgre_types),
+                                                       .types = rtnl_link_info_data_ipgre_types },
+        [NL_UNION_LINK_INFO_DATA_ERSPAN] =           { .count = ELEMENTSOF(rtnl_link_info_data_ipgre_types),
                                                        .types = rtnl_link_info_data_ipgre_types },
         [NL_UNION_LINK_INFO_DATA_IPGRETAP_TUNNEL] =  { .count = ELEMENTSOF(rtnl_link_info_data_ipgre_types),
                                                        .types = rtnl_link_info_data_ipgre_types },

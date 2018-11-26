@@ -44,6 +44,8 @@ typedef enum NetDevKind {
         NETDEV_KIND_VXCAN,
         NETDEV_KIND_WIREGUARD,
         NETDEV_KIND_NETDEVSIM,
+        NETDEV_KIND_FOU,
+        NETDEV_KIND_ERSPAN,
         _NETDEV_KIND_MAX,
         _NETDEV_KIND_INVALID = -1
 } NetDevKind;
