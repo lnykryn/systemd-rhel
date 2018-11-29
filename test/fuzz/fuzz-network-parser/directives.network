@@ -163,6 +163,9 @@ EmitDNS=
 EmitDomains=
 Managed=
 OtherInformation=
+[Neighbor]
+Address=
+MacAddress=
 [IPv6AddressLabel]
 Label=
 Prefix=
