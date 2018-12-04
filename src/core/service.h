@@ -31,6 +31,8 @@ typedef struct ServiceFDStore ServiceFDStore;
 #include "exit-status.h"
 #include "emergency-action.h"
 
+#define STATUS_TEXT_MAX (16U*1024U)
+
 typedef enum ServiceState {
         SERVICE_DEAD,
         SERVICE_START_PRE,
