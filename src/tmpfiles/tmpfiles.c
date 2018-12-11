@@ -1550,12 +1550,12 @@ static int clean_item(Item *i) {
         switch (i->type) {
         case CREATE_DIRECTORY:
         case CREATE_SUBVOLUME:
-        case EMPTY_DIRECTORY:
         case TRUNCATE_DIRECTORY:
         case IGNORE_PATH:
         case COPY_FILES:
                 clean_item_instance(i, i->path);
                 return 0;
+        case EMPTY_DIRECTORY:
         case IGNORE_DIRECTORY_PATH:
                 return glob_item(i, clean_item_instance, false);
         default:
