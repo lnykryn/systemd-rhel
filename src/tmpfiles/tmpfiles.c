@@ -621,6 +621,9 @@ static int path_set_perms(Item *i, const char *path) {
         if (fstatat(fd, "", &st, AT_EMPTY_PATH) < 0)
                 return log_error_errno(errno, "Failed to fstat() file %s: %m", path);
 
+        if (i->type == EMPTY_DIRECTORY && !S_ISDIR(st.st_mode))
+                return log_error_errno(EEXIST, "'%s' already exists and is not a directory. ", path);
+
         if (S_ISLNK(st.st_mode))
                 log_debug("Skipping mode an owner fix for symlink %s.", path);
         else {
