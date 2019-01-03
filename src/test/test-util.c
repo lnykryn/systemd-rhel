@@ -2113,6 +2113,32 @@ static void test_chase_symlinks(void) {
         r = chase_symlinks(p, NULL, 0, &result);
         assert_se(r == -ENOENT);
 
+        if (geteuid() == 0) {
+                p = strjoina(temp, "/priv1");
+                assert_se(mkdir(p, 0755) >= 0);
+
+                q = strjoina(p, "/priv2");
+                assert_se(mkdir(q, 0755) >= 0);
+
+                assert_se(chase_symlinks(q, NULL, CHASE_SAFE, NULL) >= 0);
+
+                assert_se(chown(q, 65534, 65534) >= 0);
+                assert_se(chase_symlinks(q, NULL, CHASE_SAFE, NULL) >= 0);
+
+                assert_se(chown(p, 65534, 65534) >= 0);
+                assert_se(chase_symlinks(q, NULL, CHASE_SAFE, NULL) >= 0);
+
+                assert_se(chown(q, 0, 0) >= 0);
+                assert_se(chase_symlinks(q, NULL, CHASE_SAFE, NULL) == -EPERM);
+
+                assert_se(rmdir(q) >= 0);
+                assert_se(symlink("/etc/passwd", q) >= 0);
+                assert_se(chase_symlinks(q, NULL, CHASE_SAFE, NULL) == -EPERM);
+
+                assert_se(chown(p, 0, 0) >= 0);
+                assert_se(chase_symlinks(q, NULL, CHASE_SAFE, NULL) >= 0);
+        }
+
         assert_se(rm_rf_dangerous(temp, false, true, false) >= 0);
 }
 
