@@ -107,7 +107,7 @@ static int get_line(RemoteSource *source, char **line, size_t *size) {
                 source->scanned = source->filled;
                 if (source->scanned >= DATA_SIZE_MAX) {
                         log_error("Entry is bigger than %u bytes.", DATA_SIZE_MAX);
-                        return -E2BIG;
+                        return -ENOBUFS;
                 }
 
                 if (source->passive_fd)
