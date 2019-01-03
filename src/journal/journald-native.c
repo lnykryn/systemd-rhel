@@ -133,6 +133,10 @@ void server_process_native_message(
                 }
 
                 /* A property follows */
+                if (n > ENTRY_FIELD_COUNT_MAX) {
+                        log_debug("Received an entry that has more than " STRINGIFY(ENTRY_FIELD_COUNT_MAX) " fields, ignoring entry.");
+                        goto finish;
+                }
 
                 /* n existing properties, 1 new, +1 for _TRANSPORT */
                 if (!GREEDY_REALLOC(iovec, m, n + 2 + N_IOVEC_META_FIELDS + N_IOVEC_OBJECT_FIELDS)) {
