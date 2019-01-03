@@ -36,6 +36,7 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <dirent.h>
 #include <sys/resource.h>
 #include <stddef.h>
@@ -1147,3 +1148,10 @@ static inline void block_signals_reset(sigset_t *ss) {
 
 char* set_iovec_string_field(struct iovec *iovec, unsigned int *n_iovec, const char *field, const char *value);
 char* set_iovec_field_free(struct iovec *iovec, unsigned int *n_iovec, const char *field, char *value);
+
+/* The .f_type field of struct statfs is really weird defined on
+ * different archs. Let's give its type a name. */
+typedef typeof(((struct statfs*)NULL)->f_type) statfs_f_type_t;
+
+bool is_fs_type(const struct statfs *s, statfs_f_type_t magic_value) _pure_;
+int fd_is_fs_type(int fd, statfs_f_type_t magic_value);

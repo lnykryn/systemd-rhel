@@ -9186,3 +9186,19 @@ int wait_for_terminate_with_timeout(pid_t pid, usec_t timeout) {
 
         return -EPROTO;
 }
+
+bool is_fs_type(const struct statfs *s, statfs_f_type_t magic_value) {
+        assert(s);
+        assert_cc(sizeof(statfs_f_type_t) >= sizeof(s->f_type));
+
+        return F_TYPE_EQUAL(s->f_type, magic_value);
+}
+
+int fd_is_fs_type(int fd, statfs_f_type_t magic_value) {
+        struct statfs s;
+
+        if (fstatfs(fd, &s) < 0)
+                return -errno;
+
+        return is_fs_type(&s, magic_value);
+}
