@@ -2275,6 +2275,23 @@ int flush_fd(int fd) {
         }
 }
 
+char* set_iovec_string_field(struct iovec *iovec, unsigned int *n_iovec, const char *field, const char *value) {
+        char *x;
+
+        x = strappend(field, value);
+        if (x)
+                iovec[(*n_iovec)++] = IOVEC_MAKE_STRING(x);
+        return x;
+}
+
+char* set_iovec_field_free(struct iovec *iovec, unsigned int *n_iovec, const char *field, char *value) {
+        char *x;
+
+        x = set_iovec_string_field(iovec, n_iovec, field, value);
+        free(value);
+        return x;
+}
+
 int acquire_terminal(
                 const char *name,
                 bool fail,

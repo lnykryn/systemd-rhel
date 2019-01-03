@@ -526,14 +526,6 @@ static int compose_open_fds(pid_t pid, char **open_fds) {
 }
 
 int main(int argc, char* argv[]) {
-
-        /* The small core field we allocate on the stack, to keep things simple */
-        char
-                *core_pid = NULL, *core_uid = NULL, *core_gid = NULL, *core_signal = NULL,
-                *core_session = NULL, *core_exe = NULL, *core_comm = NULL, *core_cmdline = NULL,
-                *core_cgroup = NULL, *core_cwd = NULL, *core_root = NULL, *core_unit = NULL,
-                *core_slice = NULL;
-
         /* The larger ones we allocate on the heap */
         _cleanup_free_ char
                 *core_timestamp = NULL,  *core_message = NULL, *coredump_data = NULL, *core_owner_uid = NULL,
@@ -547,7 +539,8 @@ int main(int argc, char* argv[]) {
 
         struct iovec iovec[26];
         off_t coredump_size;
-        int r, j = 0;
+        int r;
+        unsigned int n_iovec = 0;
         uid_t uid, owner_uid;
         gid_t gid;
         pid_t pid;
@@ -634,151 +627,107 @@ int main(int argc, char* argv[]) {
                         goto finish;
                 }
 
-                core_unit = strjoina("COREDUMP_UNIT=", t);
-                free(t);
-
-        } else if (cg_pid_get_user_unit(pid, &t) >= 0) {
-                core_unit = strjoina("COREDUMP_USER_UNIT=", t);
-                free(t);
+                if (!set_iovec_field_free(iovec, &n_iovec, "COREDUMP_UNIT=", t)) {
+                        r = log_oom();
+                        goto finish;
+                }
         }
 
-        if (core_unit)
-                IOVEC_SET_STRING(iovec[j++], core_unit);
+        if (cg_pid_get_user_unit(pid, &t) >= 0) {
+                if (!set_iovec_field_free(iovec, &n_iovec, "COREDUMP_USER_UNIT=", t)) {
+                        r = log_oom();
+                        goto finish;
+                }
+        }
 
         /* OK, now we know it's not the journal, hence we can make use
          * of it now. */
         log_set_target(LOG_TARGET_JOURNAL_OR_KMSG);
         log_open();
 
-        core_pid = strjoina("COREDUMP_PID=", info[INFO_PID]);
-        IOVEC_SET_STRING(iovec[j++], core_pid);
-
-        core_uid = strjoina("COREDUMP_UID=", info[INFO_UID]);
-        IOVEC_SET_STRING(iovec[j++], core_uid);
-
-        core_gid = strjoina("COREDUMP_GID=", info[INFO_GID]);
-        IOVEC_SET_STRING(iovec[j++], core_gid);
-
-        core_signal = strjoina("COREDUMP_SIGNAL=", info[INFO_SIGNAL]);
-        IOVEC_SET_STRING(iovec[j++], core_signal);
-
-        if (sd_pid_get_session(pid, &t) >= 0) {
-                core_session = strjoina("COREDUMP_SESSION=", t);
-                free(t);
-
-                IOVEC_SET_STRING(iovec[j++], core_session);
+        if (!set_iovec_string_field(iovec, &n_iovec, "COREDUMP_PID=", info[INFO_PID])) {
+                r = log_oom();
+                goto finish;
         }
+
+        if (!set_iovec_string_field(iovec, &n_iovec, "COREDUMP_UID=", info[INFO_UID])) {
+                r = log_oom();
+                goto finish;
+        }
+
+        if (!set_iovec_string_field(iovec, &n_iovec, "COREDUMP_GID=", info[INFO_GID])) {
+                r = log_oom();
+                goto finish;
+        }
+
+        if (!set_iovec_string_field(iovec, &n_iovec, "COREDUMP_SIGNAL=", info[INFO_SIGNAL])) {
+                r = log_oom();
+                goto finish;
+        }
+
+        if (comm && !set_iovec_string_field(iovec, &n_iovec, "COREDUMP_COMM=", comm)) {
+                r = log_oom();
+                goto finish;
+        }
+
+        if (exe && !set_iovec_string_field(iovec, &n_iovec, "COREDUMP_EXE=", exe)) {
+                r = log_oom();
+                goto finish;
+        }
+
+        if (sd_pid_get_session(pid, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_SESSION=", t);
 
         if (sd_pid_get_owner_uid(pid, &owner_uid) >= 0) {
                 r = asprintf(&core_owner_uid,
                              "COREDUMP_OWNER_UID=" UID_FMT, owner_uid);
                 if (r > 0)
-                        IOVEC_SET_STRING(iovec[j++], core_owner_uid);
+                        IOVEC_SET_STRING(iovec[n_iovec++], core_owner_uid);
         }
 
-        if (sd_pid_get_slice(pid, &t) >= 0) {
-                core_slice = strjoina("COREDUMP_SLICE=", t);
-                free(t);
+        if (sd_pid_get_slice(pid, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_SLICE=", t);
 
-                IOVEC_SET_STRING(iovec[j++], core_slice);
-        }
+        if (get_process_cmdline(pid, 0, false, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_CMDLINE=", t);
 
-        if (comm) {
-                core_comm = strjoina("COREDUMP_COMM=", comm);
-                IOVEC_SET_STRING(iovec[j++], core_comm);
-        }
+        if (cg_pid_get_path_shifted(pid, NULL, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_CGROUP=", t);
 
-        if (exe) {
-                core_exe = strjoina("COREDUMP_EXE=", exe);
-                IOVEC_SET_STRING(iovec[j++], core_exe);
-        }
-
-        if (get_process_cmdline(pid, 0, false, &t) >= 0) {
-                core_cmdline = strjoina("COREDUMP_CMDLINE=", t);
-                free(t);
-
-                IOVEC_SET_STRING(iovec[j++], core_cmdline);
-        }
-
-        if (cg_pid_get_path_shifted(pid, NULL, &t) >= 0) {
-                core_cgroup = strjoina("COREDUMP_CGROUP=", t);
-                free(t);
-
-                IOVEC_SET_STRING(iovec[j++], core_cgroup);
-        }
-
-        if (compose_open_fds(pid, &t) >= 0) {
-                core_open_fds = strappend("COREDUMP_OPEN_FDS=", t);
-                free(t);
-
-                if (core_open_fds)
-                        IOVEC_SET_STRING(iovec[j++], core_open_fds);
-        }
+        if (compose_open_fds(pid, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_OPEN_FDS=", t);
 
         p = procfs_file_alloca(pid, "status");
-        if (read_full_file(p, &t, NULL) >= 0) {
-                core_proc_status = strappend("COREDUMP_PROC_STATUS=", t);
-                free(t);
-
-                if (core_proc_status)
-                        IOVEC_SET_STRING(iovec[j++], core_proc_status);
-        }
+        if (read_full_file(p, &t, NULL) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_PROC_STATUS=", t);
 
         p = procfs_file_alloca(pid, "maps");
-        if (read_full_file(p, &t, NULL) >= 0) {
-                core_proc_maps = strappend("COREDUMP_PROC_MAPS=", t);
-                free(t);
-
-                if (core_proc_maps)
-                        IOVEC_SET_STRING(iovec[j++], core_proc_maps);
-        }
+        if (read_full_file(p, &t, NULL) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_PROC_MAPS=", t);
 
         p = procfs_file_alloca(pid, "limits");
-        if (read_full_file(p, &t, NULL) >= 0) {
-                core_proc_limits = strappend("COREDUMP_PROC_LIMITS=", t);
-                free(t);
-
-                if (core_proc_limits)
-                        IOVEC_SET_STRING(iovec[j++], core_proc_limits);
-        }
+        if (read_full_file(p, &t, NULL) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_PROC_LIMITS=", t);
 
         p = procfs_file_alloca(pid, "cgroup");
-        if (read_full_file(p, &t, NULL) >=0) {
-                core_proc_cgroup = strappend("COREDUMP_PROC_CGROUP=", t);
-                free(t);
+        if (read_full_file(p, &t, NULL) >=0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_PROC_CGROUP=", t);
 
-                if (core_proc_cgroup)
-                        IOVEC_SET_STRING(iovec[j++], core_proc_cgroup);
-        }
+        if (get_process_cwd(pid, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_CWD=", t);
 
-        if (get_process_cwd(pid, &t) >= 0) {
-                core_cwd = strjoina("COREDUMP_CWD=", t);
-                free(t);
+        if (get_process_root(pid, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_ROOT=", t);
 
-                IOVEC_SET_STRING(iovec[j++], core_cwd);
-        }
-
-        if (get_process_root(pid, &t) >= 0) {
-                core_root = strjoina("COREDUMP_ROOT=", t);
-                free(t);
-
-                IOVEC_SET_STRING(iovec[j++], core_root);
-        }
-
-        if (get_process_environ(pid, &t) >= 0) {
-                core_environ = strappend("COREDUMP_ENVIRON=", t);
-                free(t);
-
-                if (core_environ)
-                        IOVEC_SET_STRING(iovec[j++], core_environ);
-        }
+        if (get_process_environ(pid, &t) >= 0)
+                set_iovec_field_free(iovec, &n_iovec, "COREDUMP_ENVIRON=", t);
 
         core_timestamp = strjoin("COREDUMP_TIMESTAMP=", info[INFO_TIMESTAMP], "000000", NULL);
         if (core_timestamp)
-                IOVEC_SET_STRING(iovec[j++], core_timestamp);
+                IOVEC_SET_STRING(iovec[n_iovec++], core_timestamp);
 
-        IOVEC_SET_STRING(iovec[j++], "MESSAGE_ID=fc2e22bc6ee647b6b90729ab34a250b1");
-        IOVEC_SET_STRING(iovec[j++], "PRIORITY=2");
+        IOVEC_SET_STRING(iovec[n_iovec++], "MESSAGE_ID=fc2e22bc6ee647b6b90729ab34a250b1");
+        IOVEC_SET_STRING(iovec[n_iovec++], "PRIORITY=2");
 
         /* Vacuum before we write anything again */
         coredump_vacuum(-1, arg_keep_free, arg_max_use);
@@ -800,7 +749,7 @@ int main(int argc, char* argv[]) {
                 const char *coredump_filename;
 
                 coredump_filename = strjoina("COREDUMP_FILENAME=", filename);
-                IOVEC_SET_STRING(iovec[j++], coredump_filename);
+                IOVEC_SET_STRING(iovec[n_iovec++], coredump_filename);
         }
 
         /* Vacuum again, but exclude the coredump we just created */
@@ -838,7 +787,7 @@ int main(int argc, char* argv[]) {
 log:
         core_message = strjoin("MESSAGE=Process ", info[INFO_PID], " (", comm, ") of user ", info[INFO_UID], " dumped core.", NULL);
         if (core_message)
-                IOVEC_SET_STRING(iovec[j++], core_message);
+                IOVEC_SET_STRING(iovec[n_iovec++], core_message);
 
         /* Optionally store the entire coredump in the journal */
         if (IN_SET(arg_storage, COREDUMP_STORAGE_JOURNAL, COREDUMP_STORAGE_BOTH) &&
@@ -849,13 +798,13 @@ log:
 
                 r = allocate_journal_field(coredump_fd, (size_t) coredump_size, &coredump_data, &sz);
                 if (r >= 0) {
-                        iovec[j].iov_base = coredump_data;
-                        iovec[j].iov_len = sz;
-                        j++;
+                        iovec[n_iovec].iov_base = coredump_data;
+                        iovec[n_iovec].iov_len = sz;
+                        n_iovec++;
                 }
         }
 
-        r = sd_journal_sendv(iovec, j);
+        r = sd_journal_sendv(iovec, n_iovec);
         if (r < 0)
                 log_error_errno(r, "Failed to log coredump: %m");
 
