@@ -1910,11 +1910,45 @@ static void test_acquire_data_fd(void) {
         test_acquire_data_fd_one(ACQUIRE_NO_DEV_NULL|ACQUIRE_NO_MEMFD|ACQUIRE_NO_PIPE|ACQUIRE_NO_TMPFILE);
 }
 
+static int id128_read_fd(int fd, sd_id128_t *ret) {
+        char buf[33];
+        ssize_t k;
+        unsigned j;
+        sd_id128_t t;
+
+        assert_return(fd >= 0, -EINVAL);
+
+        k = loop_read(fd, buf, 33, false);
+        if (k < 0)
+                return (int) k;
+
+        if (k != 33)
+                return -EIO;
+
+        if (buf[32] !='\n')
+                return -EIO;
+
+        for (j = 0; j < 16; j++) {
+                int a, b;
+
+                a = unhexchar(buf[j*2]);
+                b = unhexchar(buf[j*2+1]);
+
+                if (a < 0 || b < 0)
+                        return -EIO;
+
+                t.bytes[j] = a << 4 | b;
+        }
+
+        *ret = t;
+        return 0;
+}
+
 static void test_chase_symlinks(void) {
         _cleanup_free_ char *result = NULL;
         char temp[] = "/tmp/test-chase.XXXXXX";
         const char *top, *p, *pslash, *q, *qslash;
-        int r;
+        int r, pfd;
 
         assert_se(mkdtemp(temp));
 
@@ -2137,6 +2171,29 @@ static void test_chase_symlinks(void) {
 
                 assert_se(chown(p, 0, 0) >= 0);
                 assert_se(chase_symlinks(q, NULL, CHASE_SAFE, NULL) >= 0);
+        }
+
+        p = strjoina(temp, "/machine-id-test");
+        assert_se(symlink("/usr/../etc/./machine-id", p) >= 0);
+
+        pfd = chase_symlinks(p, NULL, CHASE_OPEN, NULL);
+        if (pfd != -ENOENT) {
+                char procfs[sizeof("/proc/self/fd/") - 1 + DECIMAL_STR_MAX(pfd) + 1];
+                _cleanup_close_ int fd = -1;
+                sd_id128_t a, b;
+
+                assert_se(pfd >= 0);
+
+                xsprintf(procfs, "/proc/self/fd/%i", pfd);
+
+                fd = open(procfs, O_RDONLY|O_CLOEXEC);
+                assert_se(fd >= 0);
+
+                safe_close(pfd);
+
+                assert_se(id128_read_fd(fd, &a) >= 0);
+                assert_se(sd_id128_get_machine(&b) >= 0);
+                assert_se(sd_id128_equal(a, b));
         }
 
         assert_se(rm_rf_dangerous(temp, false, true, false) >= 0);
