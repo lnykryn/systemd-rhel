@@ -603,9 +603,9 @@ static void dispatch_message_real(
 
                 r = get_process_cmdline(ucred->pid, 0, false, &t);
                 if (r >= 0) {
-                        x = strjoina("_CMDLINE=", t);
-                        free(t);
-                        IOVEC_SET_STRING(iovec[n++], x);
+                        /* At most _SC_ARG_MAX (2MB usually), which is too much to put on stack.
+                         * Let's use a heap allocation for this one. */
+                        set_iovec_field_free(iovec, &n, "_CMDLINE=", t);
                 }
 
                 r = get_process_capeff(ucred->pid, &t);
@@ -730,11 +730,8 @@ static void dispatch_message_real(
                 }
 
                 r = get_process_cmdline(object_pid, 0, false, &t);
-                if (r >= 0) {
-                        x = strjoina("OBJECT_CMDLINE=", t);
-                        free(t);
-                        IOVEC_SET_STRING(iovec[n++], x);
-                }
+                if (r >= 0)
+                        set_iovec_field_free(iovec, &n, "OBJECT_CMDLINE=", t);
 
 #ifdef HAVE_AUDIT
                 r = audit_session_from_pid(object_pid, &audit);
