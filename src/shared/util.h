@@ -1140,3 +1140,10 @@ static inline void block_signals_reset(sigset_t *ss) {
                 _t;                                                                \
         })
 
+#define IOVEC_INIT(base, len) { .iov_base = (base), .iov_len = (len) }
+#define IOVEC_MAKE(base, len) (struct iovec) IOVEC_INIT(base, len)
+#define IOVEC_INIT_STRING(string) IOVEC_INIT((char*) string, strlen(string))
+#define IOVEC_MAKE_STRING(string) (struct iovec) IOVEC_INIT_STRING(string)
+
+char* set_iovec_string_field(struct iovec *iovec, unsigned int *n_iovec, const char *field, const char *value);
+char* set_iovec_field_free(struct iovec *iovec, unsigned int *n_iovec, const char *field, char *value);
