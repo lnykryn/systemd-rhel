@@ -653,6 +653,16 @@ dist_doc_DATA = \
 
 @INTLTOOL_POLICY_RULE@
 
+# Force serial build of policy files
+# Note that this ignores the fact that almost all of these files are only built optionally,
+# but a change in configure options is extremely unlikely at this point.
+src/core/org.freedesktop.systemd1.policy : src/hostname/org.freedesktop.hostname1.policy
+src/hostname/org.freedesktop.hostname1.policy : src/import/org.freedesktop.import1.policy
+src/import/org.freedesktop.import1.policy : src/locale/org.freedesktop.locale1.policy
+src/locale/org.freedesktop.locale1.policy : src/login/org.freedesktop.login1.policy
+src/login/org.freedesktop.login1.policy : src/machine/org.freedesktop.machine1.policy
+src/machine/org.freedesktop.machine1.policy : src/timedate/org.freedesktop.timedate1.policy
+
 # ------------------------------------------------------------------------------
 
 MANPAGES =
