@@ -738,6 +738,7 @@ static void dispatch_message_real(
                 o_uid[sizeof("OBJECT_UID=") + DECIMAL_STR_MAX(uid_t)],
                 o_gid[sizeof("OBJECT_GID=") + DECIMAL_STR_MAX(gid_t)],
                 o_owner_uid[sizeof("OBJECT_SYSTEMD_OWNER_UID=") + DECIMAL_STR_MAX(uid_t)];
+        _cleanup_free_ char *cmdline1 = NULL, *cmdline2 = NULL;
         uid_t object_uid;
         gid_t object_gid;
         char *x;
@@ -790,7 +791,7 @@ static void dispatch_message_real(
                 if (r >= 0) {
                         /* At most _SC_ARG_MAX (2MB usually), which is too much to put on stack.
                          * Let's use a heap allocation for this one. */
-                        set_iovec_field_free(iovec, &n, "_CMDLINE=", t);
+                        cmdline1 = set_iovec_field_free(iovec, &n, "_CMDLINE=", t);
                 }
 
                 r = get_process_capeff(ucred->pid, &t);
@@ -916,7 +917,7 @@ static void dispatch_message_real(
 
                 r = get_process_cmdline(object_pid, 0, false, &t);
                 if (r >= 0)
-                        set_iovec_field_free(iovec, &n, "OBJECT_CMDLINE=", t);
+                        cmdline2 = set_iovec_field_free(iovec, &n, "OBJECT_CMDLINE=", t);
 
 #ifdef HAVE_AUDIT
                 r = audit_session_from_pid(object_pid, &audit);
