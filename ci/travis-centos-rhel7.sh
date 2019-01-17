@@ -52,13 +52,6 @@ for phase in "${PHASES[@]}"; do
                                      --enable-gtk-doc --enable-compat-libs --disable-sysusers \
                                      --disable-ldconfig --enable-lz4 --with-sysvinit-path=/etc/rc.d/init.d
             $DOCKER_EXEC make
-            # Temporarily skip test_path_changed in src/test/test-path.c
-            # This particular test case timeouts on Ubuntu in a Docker image
-            # and needs further debugging (couldn't reproduce it on
-            # Fedora + Docker
-            $DOCKER_EXEC sed -i '/static void test_path_changed/,/^}\s*$/d' src/test/test-path.c
-            $DOCKER_EXEC sed -i '/test_path_changed,/d' src/test/test-path.c
-
             # Run the internal testsuite
             # Let's install the new systemd and "reboot" the container to avoid
             # unexpected fails due to incompatibilities with older systemd
