@@ -60,6 +60,10 @@ for phase in "${PHASES[@]}"; do
             $DOCKER_EXEC sed -i '/test_path_changed,/d' src/test/test-path.c
 
             # Run the internal testsuite
+            # Let's install the new systemd and "reboot" the container to avoid
+            # unexpected fails due to incompatibilities with older systemd
+            $DOCKER_EXEC make install
+            docker restart $CONT_NAME
             if ! $DOCKER_EXEC make check; then
                 $DOCKER_EXEC cat test-suite.log
                 exit 1
