@@ -4,7 +4,8 @@
 SUBSYSTEM=="cpu", ACTION=="add", TEST=="online", ATTR{online}=="0", ATTR{online}="1"
 
 # Memory hotadd request
-SUBSYSTEM!="memory", ACTION!="add", GOTO="memory_hotplug_end"
+SUBSYSTEM!="memory", GOTO="memory_hotplug_end"
+ACTION!="add", GOTO="memory_hotplug_end"
 PROGRAM="/bin/uname -p", RESULT=="s390*", GOTO="memory_hotplug_end"
 
 ENV{.state}="online"
