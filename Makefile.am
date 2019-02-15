@@ -1665,6 +1665,7 @@ test_util_SOURCES = \
 	src/test/test-util.c
 
 test_util_LDADD = \
+	libsystemd-internal.la \
 	libsystemd-shared.la
 
 test_path_lookup_SOURCES = \
