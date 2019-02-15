@@ -36,6 +36,7 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <dirent.h>
 #include <sys/resource.h>
 #include <stddef.h>
@@ -1147,3 +1148,20 @@ static inline void block_signals_reset(sigset_t *ss) {
 
 char* set_iovec_string_field(struct iovec *iovec, unsigned int *n_iovec, const char *field, const char *value);
 char* set_iovec_field_free(struct iovec *iovec, unsigned int *n_iovec, const char *field, char *value);
+
+/* The .f_type field of struct statfs is really weird defined on
+ * different archs. Let's give its type a name. */
+typedef typeof(((struct statfs*)NULL)->f_type) statfs_f_type_t;
+
+bool is_fs_type(const struct statfs *s, statfs_f_type_t magic_value) _pure_;
+int fd_is_fs_type(int fd, statfs_f_type_t magic_value);
+
+enum {
+        CHASE_PREFIX_ROOT = 1U << 0,   /* If set, the specified path will be prefixed by the specified root before beginning the iteration */
+        CHASE_NONEXISTENT = 1U << 1,   /* If set, it's OK if the path doesn't actually exist. */
+        CHASE_NO_AUTOFS   = 1U << 2,   /* If set, return -EREMOTE if autofs mount point found */
+        CHASE_SAFE        = 1U << 3,   /* If set, return EPERM if we ever traverse from unprivileged to privileged files or directories */
+        CHASE_OPEN        = 1U << 4,   /* If set, return an O_PATH object to the final component */
+};
+
+int chase_symlinks(const char *path_with_prefix, const char *root, unsigned flags, char **ret);
