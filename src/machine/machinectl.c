@@ -1086,7 +1086,7 @@ static int copy_files(int argc, char *argv[], void *userdata) {
                 return r;
 
         hostfd = open(host_dirname, O_CLOEXEC|O_RDONLY|O_NOCTTY|O_DIRECTORY);
-        if (r < 0)
+        if (hostfd < 0)
                 return log_error_errno(errno, "Failed to open source directory: %m");
 
         child = fork();
