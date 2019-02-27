@@ -586,11 +586,9 @@ int setup_namespace(
         return 0;
 
 fail:
-        if (n > 0) {
-                for (m = mounts; m < mounts + n; ++m)
-                        if (m->done)
-                                umount2(m->path, MNT_DETACH);
-        }
+        for (m = mounts; m < mounts + n; ++m)
+                if (m->done)
+                        umount2(m->path, MNT_DETACH);
 
         return r;
 }
