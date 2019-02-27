@@ -345,7 +345,7 @@ static int system_journal_open(Server *s, bool flush_requested) {
                 if (r >= 0) {
                         server_fix_perms(s, s->system_journal, 0);
                         available_space(s, true);
-                } else if (r < 0) {
+                } else {
                         if (r != -ENOENT && r != -EROFS)
                                 log_warning_errno(r, "Failed to open system journal: %m");
 
