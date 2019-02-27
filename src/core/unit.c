@@ -2032,7 +2032,7 @@ static int unit_watch_pids_in_path(Unit *u, const char *path) {
                 if (r < 0 && ret >= 0)
                         ret = r;
 
-        } else if (ret >= 0)
+        } else
                 ret = r;
 
         r = cg_enumerate_subgroups(SYSTEMD_CGROUP_CONTROLLER, path, &d);
