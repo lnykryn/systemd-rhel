@@ -455,8 +455,7 @@ int import_verify(
         }
 
 finish:
-        if (sig_file >= 0)
-                unlink(sig_file_path);
+        (void) unlink(sig_file_path);
 
         if (gpg_home_created)
                 rm_rf_dangerous(gpg_home, false, true, false);
