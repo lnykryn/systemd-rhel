@@ -2792,9 +2792,7 @@ int manager_reload(Manager *m) {
         lookup_paths_free(&m->lookup_paths);
 
         /* Find new unit paths */
-        q = manager_run_generators(m);
-        if (q < 0 && r >= 0)
-                r = q;
+        r = manager_run_generators(m);
 
         q = lookup_paths_init(
                         &m->lookup_paths, m->running_as, true,
