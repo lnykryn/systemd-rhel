@@ -1482,9 +1482,9 @@ static int install_context_apply(
                 if (q < 0)
                         return q;
 
-                r = install_info_traverse(scope, c, root_dir, paths, i, flags, NULL);
-                if (r < 0)
-                        return r;
+                q = install_info_traverse(scope, c, root_dir, paths, i, flags, NULL);
+                if (q < 0)
+                        return q;
 
                 if (i->type != UNIT_FILE_TYPE_REGULAR)
                         continue;
