@@ -568,7 +568,7 @@ static int load_sysv(SysvStub *s) {
                                                 }
                                         }
 
-                                        if (r < 0)
+                                        if (r < 0) // lgtm[cpp/constant-comparison]
                                                 log_unit_error(s->name,
                                                                "[%s:%u] Failed to add dependency on %s, ignoring: %s",
                                                                s->path, line, m, strerror(-r));

@@ -150,7 +150,7 @@ static int ask_password_plymouth(
 
                 p += k;
 
-                if (p < 1)
+                if (p < 1) // lgtm[cpp/constant-comparison]
                         continue;
 
                 if (buffer[0] == 5) {
