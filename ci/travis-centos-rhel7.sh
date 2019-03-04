@@ -51,7 +51,7 @@ for phase in "${PHASES[@]}"; do
             $DOCKER_EXEC ./configure --disable-timesyncd --disable-kdbus --disable-terminal \
                                      --enable-gtk-doc --enable-compat-libs --disable-sysusers \
                                      --disable-ldconfig --enable-lz4 --with-sysvinit-path=/etc/rc.d/init.d
-            $DOCKER_EXEC make
+            $DOCKER_EXEC make -j $(nproc)
             # Run the internal testsuite
             # Let's install the new systemd and "reboot" the container to avoid
             # unexpected fails due to incompatibilities with older systemd
