@@ -776,7 +776,8 @@ static struct HashmapBase *hashmap_base_new(const struct hash_ops *hash_ops, enu
         const struct hashmap_type_info *hi = &hashmap_type_info[type];
         bool use_pool;
 
-        use_pool = is_main_thread();
+        /* RHEL-only. See #1609349. */
+        use_pool = false;
 
         h = use_pool ? mempool_alloc0_tile(hi->mempool) : malloc0(hi->head_size);
 
