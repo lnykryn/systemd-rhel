@@ -21,7 +21,7 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 -->
 
-<refentry id="sd_journal_get_realtime_usec">
+<refentry id="sd_journal_get_realtime_usec" xmlns:xi="http://www.w3.org/2001/XInclude">
 
   <refentryinfo>
     <title>sd_journal_get_realtime_usec</title>
@@ -114,6 +114,8 @@
 
   <refsect1>
     <title>Notes</title>
+
+    <xi:include href="threads-aware.xml" xpointer="strict"/>
 
     <para>The <function>sd_journal_get_realtime_usec()</function> and
     <function>sd_journal_get_monotonic_usec()</function> interfaces

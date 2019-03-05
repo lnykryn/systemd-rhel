@@ -21,7 +21,7 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 -->
 
-<refentry id="sd_journal_stream_fd">
+<refentry id="sd_journal_stream_fd" xmlns:xi="http://www.w3.org/2001/XInclude">
 
   <refentryinfo>
     <title>sd_journal_stream_fd</title>
@@ -103,6 +103,8 @@
 
   <refsect1>
     <title>Notes</title>
+
+    <xi:include href="threads-aware.xml" xpointer="safe"/>
 
     <para>The <function>sd_journal_stream_fd()</function> interface is
     available as a shared library, which can be compiled and linked to

@@ -21,7 +21,7 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 -->
 
-<refentry id="sd_journal_has_runtime_files">
+<refentry id="sd_journal_has_runtime_files" xmlns:xi="http://www.w3.org/2001/XInclude">
 
   <refentryinfo>
     <title>sd_journal_has_runtime_files</title>
@@ -83,6 +83,12 @@
     and <function>sd_journal_has_persistent_files()</function> return -EINVAL
     if their argument is NULL.
     </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Notes</title>
+
+    <xi:include href="threads-aware.xml" xpointer="strict"/>
   </refsect1>
 
   <refsect1>
