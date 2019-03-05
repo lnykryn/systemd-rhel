@@ -112,6 +112,15 @@
   <refsect1>
     <title>Notes</title>
 
+    <para>Function <function>sd_journal_get_catalog()</function> is thread-agnostic and only
+    a single specific thread may operate on a given object during its entire lifetime. It's safe to allocate multiple
+    independent objects and use each from a specific thread in parallel. However, it's not safe to allocate such an
+    object in one thread, and operate or free it from any other, even if locking is used to ensure these threads don't
+    operate on it at the very same time.</para>
+
+    <para>Function <function>sd_journal_get_catalog_for_message_id()</function> is are thread-safe and may be called in
+    parallel from multiple threads.</para>
+
     <para>The <function>sd_journal_get_catalog()</function> and
     <function>sd_journal_get_catalog_for_message_id()</function>
     interfaces are available as a shared library, which can be

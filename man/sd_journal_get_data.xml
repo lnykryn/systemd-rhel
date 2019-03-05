@@ -21,7 +21,7 @@
   along with systemd; If not, see <http://www.gnu.org/licenses/>.
 -->
 
-<refentry id="sd_journal_get_data">
+<refentry id="sd_journal_get_data" xmlns:xi="http://www.w3.org/2001/XInclude">
 
   <refentryinfo>
     <title>sd_journal_get_data</title>
@@ -182,6 +182,8 @@
 
   <refsect1>
     <title>Notes</title>
+
+    <xi:include href="threads-aware.xml" xpointer="strict"/>
 
     <para>The <function>sd_journal_get_data()</function>,
     <function>sd_journal_enumerate_data()</function>,
