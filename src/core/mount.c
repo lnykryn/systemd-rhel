@@ -1527,7 +1527,7 @@ static int mount_setup_unit(
 
         if (set_flags) {
                 MOUNT(u)->is_mounted = true;
-                MOUNT(u)->just_mounted = !MOUNT(u)->from_proc_self_mountinfo;
+                MOUNT(u)->just_mounted = !MOUNT(u)->from_proc_self_mountinfo || MOUNT(u)->just_mounted;
                 MOUNT(u)->just_changed = changed;
         }
 
