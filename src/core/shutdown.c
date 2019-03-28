@@ -296,6 +296,8 @@ int main(int argc, char *argv[]) {
 
         cg_get_root_path(&cgroup);
 
+        in_container = detect_container(NULL) > 0;
+
         use_watchdog = !!getenv("WATCHDOG_USEC");
 
         /* lock us into memory */
@@ -313,8 +315,6 @@ int main(int argc, char *argv[]) {
 
         log_info("Sending SIGKILL to remaining processes...");
         broadcast_signal(SIGKILL, true, false);
-
-        in_container = detect_container(NULL) > 0;
 
         need_umount = !in_container;
         need_swapoff = !in_container;
