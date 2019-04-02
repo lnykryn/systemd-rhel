@@ -401,6 +401,8 @@ do {                                                                    \
 
 #define SET_FLAG(v, flag, b) \
         (v) = (b) ? ((v) | (flag)) : ((v) & ~(flag))
+#define FLAGS_SET(v, flags) \
+        ((~(v) & (flags)) == 0)
 
 #define IN_SET(x, y, ...)                                               \
         ({                                                              \
