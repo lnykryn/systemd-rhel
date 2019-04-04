@@ -127,9 +127,11 @@
 #endif
 
 #if !HAVE_DECL_PIVOT_ROOT
-static inline int pivot_root(const char *new_root, const char *put_old) {
+static inline int missing_pivot_root(const char *new_root, const char *put_old) {
         return syscall(SYS_pivot_root, new_root, put_old);
 }
+
+#define pivot_root missing_pivot_root
 #endif
 
 #ifndef __NR_memfd_create
@@ -197,13 +199,15 @@ static inline int pivot_root(const char *new_root, const char *put_old) {
 #endif
 
 #ifndef HAVE_FANOTIFY_INIT
-static inline int fanotify_init(unsigned int flags, unsigned int event_f_flags) {
+static inline int missing_fanotify_init(unsigned int flags, unsigned int event_f_flags) {
         return syscall(__NR_fanotify_init, flags, event_f_flags);
 }
+
+#define fanotify_init missing_fanotify_init
 #endif
 
 #ifndef HAVE_FANOTIFY_MARK
-static inline int fanotify_mark(int fanotify_fd, unsigned int flags, uint64_t mask,
+static inline int missing_fanotify_mark(int fanotify_fd, unsigned int flags, uint64_t mask,
                                 int dfd, const char *pathname) {
 #if defined _MIPS_SIM && _MIPS_SIM == _MIPS_SIM_ABI32 || defined __powerpc__ && !defined __powerpc64__ \
     || defined __arm__ && !defined __aarch64__
@@ -219,12 +223,16 @@ static inline int fanotify_mark(int fanotify_fd, unsigned int flags, uint64_t ma
         return syscall(__NR_fanotify_mark, fanotify_fd, flags, mask, dfd, pathname);
 #endif
 }
+
+#define fanotify_mark missing_fanotify_mark
 #endif
 
 #ifndef HAVE_MEMFD_CREATE
-static inline int memfd_create(const char *name, unsigned int flags) {
+static inline int missing_memfd_create(const char *name, unsigned int flags) {
         return syscall(__NR_memfd_create, name, flags);
 }
+
+#define memfd_create missing_memfd_create
 #endif
 
 #ifndef __NR_getrandom
@@ -261,9 +269,11 @@ static inline int memfd_create(const char *name, unsigned int flags) {
 #endif
 
 #if !HAVE_DECL_GETRANDOM
-static inline int getrandom(void *buffer, size_t count, unsigned flags) {
+static inline int missing_getrandom(void *buffer, size_t count, unsigned flags) {
         return syscall(__NR_getrandom, buffer, count, flags);
 }
+
+#define getrandom missing_getrandom
 #endif
 
 #ifndef GRND_NONBLOCK
@@ -529,9 +539,11 @@ struct btrfs_ioctl_clone_range_args {
 #endif
 
 #if !HAVE_DECL_GETTID
-static inline pid_t gettid(void) {
+static inline pid_t missing_gettid(void) {
         return (pid_t) syscall(SYS_gettid);
 }
+
+#define gettid missing_gettid
 #endif
 
 #ifndef SCM_SECURITY
@@ -583,9 +595,11 @@ struct file_handle {
         unsigned char f_handle[0];
 };
 
-static inline int name_to_handle_at(int fd, const char *name, struct file_handle *handle, int *mnt_id, int flags) {
+static inline int missing_name_to_handle_at(int fd, const char *name, struct file_handle *handle, int *mnt_id, int flags) {
         return syscall(__NR_name_to_handle_at, fd, name, handle, mnt_id, flags);
 }
+
+#define name_to_handle_at missing_name_to_handle_at
 #endif
 
 #ifndef HAVE_SECURE_GETENV
@@ -647,9 +661,11 @@ static inline int name_to_handle_at(int fd, const char *name, struct file_handle
 #endif
 
 #if !HAVE_DECL_SETNS
-static inline int setns(int fd, int nstype) {
+static inline int missing_setns(int fd, int nstype) {
         return syscall(__NR_setns, fd, nstype);
 }
+
+#define setns missing_setns
 #endif
 
 #if !HAVE_DECL_LO_FLAGS_PARTSCAN
@@ -986,9 +1002,11 @@ static inline pid_t raw_getpid(void) {
 #  endif
 #endif
 
-static inline int renameat2(int oldfd, const char *oldname, int newfd, const char *newname, unsigned flags) {
+static inline int missing_renameat2(int oldfd, const char *oldname, int newfd, const char *newname, unsigned flags) {
         return syscall(__NR_renameat2, oldfd, oldname, newfd, newname, flags);
 }
+
+#define renameat2 missing_renameat2
 #endif
 
 #ifndef RENAME_NOREPLACE
@@ -996,9 +1014,11 @@ static inline int renameat2(int oldfd, const char *oldname, int newfd, const cha
 #endif
 
 #if !HAVE_DECL_KCMP
-static inline int kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2) {
+static inline int missing_kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2) {
         return syscall(__NR_kcmp, pid1, pid2, type, idx1, idx2);
 }
+
+#define kcmp missing_kcmp
 #endif
 
 #ifndef KCMP_FILE
