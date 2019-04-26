@@ -597,8 +597,9 @@ static int spawn_wait(struct udev_event *event,
                 }
 
                 if (pfd[0].revents & POLLIN) {
+                        int child_exited = -1;
                         struct signalfd_siginfo fdsi;
-                        int status;
+                        int status, r;
                         ssize_t size;
 
                         size = read(event->fd_signal, &fdsi, sizeof(struct signalfd_siginfo));
@@ -612,10 +613,28 @@ static int spawn_wait(struct udev_event *event,
                         case SIGCHLD:
                                 if (pid != (pid_t) fdsi.ssi_pid) {
                                         log_debug("expected SIGCHLD from '%s' ["PID_FMT"] received from unknown process ["PID_FMT"]. Ignoring", cmd, pid, fdsi.ssi_pid);
-                                        continue;
+
+                                        /* We got SIGCHLD from unexpected process. Possibly some library that we use forked off something behind our back.
+                                           In case the PID we wait for also exited the kernel could coalesce SIGCHLDs and we won't get second SIGCHLD
+                                           on the signalfd. We can't know if coalescing happened or not, hence we need to call waitpid() in a loop until
+                                           the PID we care for exits, we if it haven't already. */
+                                        while (child_exited < 0) {
+                                                r = waitpid(-1, &status, 0);
+                                                if (r < 0 && errno == EINTR)
+                                                        continue;
+                                                else if (r < 0)
+                                                        break;
+                                                else if (r == pid)
+                                                        child_exited = 0;
+                                        }
                                 }
-                                if (waitpid(pid, &status, WNOHANG) <= 0)
-                                        break;
+
+                                /* We didn't wait for child yet, let's do that now */
+                                if (child_exited < 0) {
+                                        if (waitpid(pid, &status, WNOHANG) <= 0)
+                                                break;
+                                }
+
                                 if (WIFEXITED(status)) {
                                         log_debug("'%s' ["PID_FMT"] exit with return code %i", cmd, pid, WEXITSTATUS(status));
                                         if (WEXITSTATUS(status) != 0)
