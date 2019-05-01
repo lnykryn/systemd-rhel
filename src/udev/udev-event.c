@@ -559,7 +559,7 @@ static int spawn_wait(struct udev_event *event,
                         usec_t age_usec;
 
                         age_usec = now(CLOCK_MONOTONIC) - event->birth_usec;
-                        if (age_usec >= timeout_usec)
+                        if (age_usec >= timeout_usec || age_usec >= timeout_warn_usec)
                                 timeout = 1000;
                         else {
                                 if (timeout_warn_usec > 0)
