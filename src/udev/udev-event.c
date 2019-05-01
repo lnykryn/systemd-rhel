@@ -593,6 +593,10 @@ static int spawn_wait(struct udev_event *event,
                         if (fdcount == 0) {
                                 log_error("timeout: killing '%s' ["PID_FMT"]", cmd, pid);
                                 kill(pid, SIGKILL);
+
+                                fdcount = poll(pfd, 1, 1000);
+                                if (fdcount <= 0)
+                                        continue;
                         }
                 }
 
