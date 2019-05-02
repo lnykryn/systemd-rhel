@@ -605,6 +605,7 @@ static int spawn_wait(struct udev_event *event,
                         struct signalfd_siginfo fdsi;
                         int status, r;
                         ssize_t size;
+                        bool wait_again = false;
 
                         size = read(event->fd_signal, &fdsi, sizeof(struct signalfd_siginfo));
                         if (size != sizeof(struct signalfd_siginfo))
@@ -622,15 +623,21 @@ static int spawn_wait(struct udev_event *event,
                                            In case the PID we wait for also exited the kernel could coalesce SIGCHLDs and we won't get second SIGCHLD
                                            on the signalfd. We can't know if coalescing happened or not, hence we need to call waitpid() in a loop until
                                            the PID we care for exits, we if it haven't already. */
-                                        while (child_exited < 0) {
-                                                r = waitpid(-1, &status, 0);
+                                        while (child_exited < 0 && !wait_again) {
+                                                r = waitpid(-1, &status, WNOHANG);
                                                 if (r < 0 && errno == EINTR)
                                                         continue;
                                                 else if (r < 0)
                                                         break;
                                                 else if (r == pid)
                                                         child_exited = 0;
+                                                else if (r == 0)
+                                                        wait_again = true;
                                         }
+
+                                        /* Only unexpected process(es) have been terminated. Continue waiting */
+                                        if (wait_again)
+                                                continue;
                                 }
 
                                 /* We didn't wait for child yet, let's do that now */
